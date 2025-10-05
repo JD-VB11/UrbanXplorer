@@ -25,4 +25,4 @@ By integrating these factors into a unified web platform, UrbanXplorer allows de
 <h1>BENEFITS</h1>
 <p>Using UrbanXplorer offers significant advantages for urban planners, engineers, and policymakers by turning complex geospatial data into clear, actionable insights. Through its interactive map, indicators, and built-in chatbot, UrbanXplorer makes scientific data accessible and easy to interpret, even for non-technical users. Moreover, by revealing high-risk or underdeveloped zones, it supports urban resilience and disaster preparedness. Overall, UrbanXplorer empowers decision-makers to plan smarter, greener, and more balanced cities while fostering transparency and sustainable growth.
 </p>
-<h1>NASA APPS CHALLENGUE LINK: </h1> <href url='https://www.spaceappschallenge.org/2025/find-a-team/spacemakers1/?tab=project'> NASA APPS CHALLENGUE</href
+<h1>NASA APPS CHALLENGUE LINK: </h1> https://www.spaceappschallenge.org/2025/find-a-team/spacemakers1/?tab=project
