@@ -9,6 +9,10 @@
 <p>We introduce UrbanXplorer, a project which goal is to provide urban planners, engineers, and local authorities with an accessible tool, based on scientific data, that supports sustainable planning and urban resilience in the Dominican Republic. In pursuit of achiving this we have developed an interactive map that integrates geospatial information from NASA sources and other open databases. Our map gives insights of critical aspects of the urban environment, such as: high-population-density zones, to plan for more balanced growth, areas needing new power plants or basic services, optimizing resource distribution, sectors with sewage system issues or environmental risk, facilitating decision-making for infrastructure projects using NASA data.
 </p>
 
+<h3>BENEFITS</h3>
+<p>Using UrbanXplorer offers significant advantages for urban planners, engineers, and policymakers by turning complex geospatial data into clear, actionable insights. Through its interactive map, indicators, and built-in chatbot, UrbanXplorer makes scientific data accessible and easy to interpret, even for non-technical users. Moreover, by revealing high-risk or underdeveloped zones, it supports urban resilience and disaster preparedness. Overall, UrbanXplorer empowers decision-makers to plan smarter, greener, and more balanced cities while fostering transparency and sustainable growth.
+</p>
+
 <H3>HOW DOES IT WORK</H3>
 <p>The website features an interactive map that integrates information from NASA’s open datasets and local sources, allowing users to explore critical aspects of the urban environment. It highlights overpopulated areas, zones with low light intensity that indicate the need for new power plants, deforested regions, and protected natural areas, providing valuable insights for urban planners and policymakers.
 </p>
@@ -24,7 +28,5 @@
 <img width="1318" height="611" alt="image" src="https://github.com/user-attachments/assets/c19ca056-57c1-45f6-a9ae-a3cbcd703555" />
 This section will show the interactive map where the page users will acquire real data representations based in NASA Geoespacial data and somes local sources related overcrowder topics, electrical faults, sewerage problems, low light, desforestation and protected areas. In this space is the main tool for urban planners, students, teachers, scientists and citizens, all type of people!
 
-<h3>BENEFITS</h3>
-<p>Using UrbanXplorer offers significant advantages for urban planners, engineers, and policymakers by turning complex geospatial data into clear, actionable insights. Through its interactive map, indicators, and built-in chatbot, UrbanXplorer makes scientific data accessible and easy to interpret, even for non-technical users. Moreover, by revealing high-risk or underdeveloped zones, it supports urban resilience and disaster preparedness. Overall, UrbanXplorer empowers decision-makers to plan smarter, greener, and more balanced cities while fostering transparency and sustainable growth.
-</p>
+
 <h1>NASA APPS CHALLENGUE LINK: </h1> https://www.spaceappschallenge.org/2025/find-a-team/spacemakers1/?tab=project
