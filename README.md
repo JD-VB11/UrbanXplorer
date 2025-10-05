@@ -28,5 +28,10 @@
 <img width="1318" height="611" alt="image" src="https://github.com/user-attachments/assets/c19ca056-57c1-45f6-a9ae-a3cbcd703555" />
 This section will show the interactive map where the page users will acquire real data representations based in NASA Geoespacial data and somes local sources related overcrowder topics, electrical faults, sewerage problems, low light, desforestation and protected areas. In this space is the main tool for urban planners, students, teachers, scientists and citizens, all type of people!
 
+There isn't all! incluse if you need more help, UrbanXplorer can help you by mean a chat with our AI assistant.
+<img width="434" height="572" alt="image" src="https://github.com/user-attachments/assets/0812d3a5-4bdf-4ced-9b29-4a57e14dd4e3" />
+if there isn't enough you can try the recomendation based in the data from page for get a detailed plan:
+<img width="1157" height="228" alt="image" src="https://github.com/user-attachments/assets/3e0beb97-c901-464a-a988-f37211b9c3e2" />
+
 
 <h1>NASA APPS CHALLENGUE LINK: </h1> https://www.spaceappschallenge.org/2025/find-a-team/spacemakers1/?tab=project
