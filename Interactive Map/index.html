@@ -1,0 +1,2085 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-key="pageTitle">UrbanXplorer | Monitoreo Urbano Satelital</title>
+    <!-- Carga de Tailwind CSS para el diseño -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <!-- Carga de Iconos (Lucide Icons) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Carga de Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    
+    <style>
+        /* --- Definición de Temas de Color con Variables CSS --- */
+        :root {
+            /* Default: Dark Theme (SpaceX) */
+            --color-primary: #0D0D0D; 
+            --color-secondary: #1A1A1A; 
+            --color-accent: #06B6D4; /* Cian (del logo) para énfasis */
+            --color-highlight: #FFFFFF; 
+            --color-text-light: #E5E7EB;
+            --color-border: #374151;
+            --color-risk-red: #DC2626;
+            --color-risk-green: #10B981;
+        }
+
+        /* Tema 1: Terra (Claro) */
+        body[data-theme='terra'] {
+            --color-primary: #F3F4F6;
+            --color-secondary: #FFFFFF;
+            --color-accent: #1D4ED8;
+            --color-highlight: #1F2937;
+            --color-text-light: #374151;
+            --color-border: #D1D5DB;
+            --color-risk-red: #B91C1C;
+            --color-risk-green: #059669;
+        }
+        
+        /* Tema 2: Neptune (Azul Profundo) */
+        body[data-theme='neptune'] {
+            --color-primary: #082F49;
+            --color-secondary: #164E63;
+            --color-accent: #93C5FD;
+            --color-highlight: #FFFFFF;
+            --color-text-light: #DBEAFE;
+            --color-border: #3B82F6;
+            --color-risk-red: #F87171;
+            --color-risk-green: #6EE7B7;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-primary);
+            color: var(--color-text-light);
+            padding-top: 4.5rem; /* Ajuste para navbar fijo */
+            transition: background-color 0.5s ease;
+        }
+
+        /* --- Estilos Comunes --- */
+        .navbar {
+            background-color: var(--color-secondary);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+            border-bottom: 1px solid var(--color-border);
+            height: 4.5rem; /* Altura fija para el navbar */
+        }
+        
+        /* --- AJUSTE DE LOGO --- */
+        .logo-area {
+            position: relative;
+            z-index: 1;
+        }
+        .logo-area::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: -10%;
+            width: 150%;
+            height: 150%;
+            background: radial-gradient(circle at 30% 50%, rgba(var(--color-accent-rgb, 6, 182, 212), 0.1) 0%, transparent 60%);
+            transform: translateY(-50%);
+            z-index: -1;
+            pointer-events: none;
+            transition: background 0.5s ease;
+        }
+        #my-logo, .logo-area h1 {
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-section {
+            background-image: url('pantalla.png');
+            background-attachment: fixed;
+            background-size: cover;
+            background-position: center;
+            color: var(--color-highlight); 
+            height: 100vh; /* Altura de la vista completa */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+            overflow: hidden; /* Evita que el contenido escalado se salga */
+        }
+        
+        #hero-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0, 0, 0, 0.4);
+            transition: background-color 0.5s;
+        }
+
+        #hero-content {
+            z-index: 10;
+            padding: 1rem;
+            max-width: 90%;
+            margin-top: -5rem; /* Compensa la altura del navbar */
+        }
+
+
+        /* Tarjeta general (Aumentamos el espaciado interno y el radio) */
+        .spacex-card { 
+            background-color: var(--color-secondary);
+            border: 1px solid var(--color-border); 
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s, box-shadow 0.3s, background-color 0.5s;
+            border-radius: 1.25rem; /* rounded-xl más grande */
+            padding: 2rem; /* p-8 */
+        }
+        .spacex-card:hover {
+            transform: translateY(-4px); /* Ajuste de elevación sutil */
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+        }
+
+        /* Botón de navegación activo/resaltado */
+        .nav-link.active {
+            color: var(--color-accent) !important; 
+            border-bottom: 3px solid var(--color-accent) !important;
+            font-weight: 600;
+        }
+        .nav-link:hover {
+            color: var(--color-accent) !important;
+        }
+        
+        .counter-value {
+            color: var(--color-highlight);
+            font-weight: 900;
+        }
+        .text-spacex-highlight {
+            color: var(--color-accent);
+        }
+        .text-red-600 {
+            color: var(--color-risk-red);
+        }
+        .text-green-600 { 
+             color: var(--color-risk-green);
+        }
+
+        /* Contenedor del mapa Leaflet */
+        #leaflet-map-container {
+            height: 70vh; /* Se reduce un poco la altura para móviles */
+            min-height: 400px;
+            background-color: #000000;
+            border: 1px solid var(--color-border); 
+            border-radius: 1rem;
+        }
+        @media (min-width: 1024px) { /* Desktop */
+             #leaflet-map-container {
+                 height: 75vh;
+                 min-height: 550px;
+            }
+        }
+
+        /* Estilo para los botones principales de la Landing Page */
+        .main-cta-button {
+             background-color: var(--color-accent);
+             color: var(--color-primary); /* Color de texto que contrasta con el acento */
+             transition: all 0.3s;
+             font-weight: 700;
+             box-shadow: 0 4px 10px rgba(var(--color-accent-rgb, 6, 182, 212), 0.4);
+        }
+        .main-cta-button:hover {
+             background-color: var(--color-highlight);
+             color: var(--color-primary);
+             box-shadow: 0 6px 15px rgba(255, 255, 255, 0.3);
+        }
+
+
+        /* Animación y Scroll */
+        .animate-on-scroll {
+            opacity: 0;
+            transform: translateY(30px); 
+            transition: opacity 1.0s ease-out, transform 1.0s ease-out; 
+        }
+        .animate-on-scroll.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Estilos específicos para el slider */
+        .slider-container {
+            overflow: hidden;
+            border: 1px solid var(--color-border);
+            position: relative;
+        }
+        .slides {
+            display: flex;
+            transition: transform 0.8s ease-in-out;
+        }
+        .slide {
+            min-width: 100%;
+            height: 40vh; /* Altura adaptable en móviles */
+            display: flex;
+            align-items: flex-end;
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            padding: 1.5rem;
+            box-sizing: border-box;
+        }
+        .slide-content {
+            z-index: 10;
+        }
+         @media (min-width: 1024px) { /* Desktop */
+            .slide {
+                height: 50vh;
+                padding: 3rem;
+            }
+        }
+        
+        /* --- NUEVOS ESTILOS PARA MENÚ MÓVIL --- */
+        #mobile-menu {
+            position: fixed;
+            top: 4.5rem; /* Altura del navbar */
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--color-primary);
+            z-index: 40; /* Debajo del navbar (z-50) */
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            transform: translateY(-100%);
+            opacity: 0;
+            pointer-events: none;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        #mobile-menu.open {
+            transform: translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+
+        /* Ajustar el estilo de la Leyenda Leaflet para dark/custom mode */
+        .info.legend {
+            background: var(--color-secondary);
+            color: var(--color-text-light);
+            border: 1px solid var(--color-border);
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+        }
+        .legend h4 {
+            color: var(--color-highlight);
+            font-size: 0.9rem;
+            margin-bottom: 0.3rem;
+        }
+        .legend i {
+            width: 15px;
+            height: 15px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.7;
+            border-radius: 50%;
+        }
+        .legend div {
+            font-size: 0.75rem;
+            margin-bottom: 0.15rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        /* Control de capas de Leaflet */
+        .leaflet-control-layers {
+            background: var(--color-secondary);
+            border: 1px solid var(--color-border);
+            color: var(--color-text-light);
+            border-radius: 0.5rem;
+        }
+        .leaflet-control-layers-base label, .leaflet-control-layers-overlays label {
+            color: var(--color-text-light);
+        }
+        .leaflet-control-layers-separator {
+            border-top: 1px solid var(--color-border);
+        }
+        
+        /* --- Estilos Personalizados para Popups de Leaflet --- */
+        .custom-leaflet-popup .leaflet-popup-content-wrapper {
+            background-color: var(--color-secondary);
+            color: var(--color-text-light);
+            border: 1px solid var(--color-border);
+            border-radius: 0.75rem; /* rounded-lg */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            padding: 0.25rem;
+        }
+        .custom-leaflet-popup .leaflet-popup-tip-container {
+            width: 40px;
+            height: 20px;
+        }
+        .custom-leaflet-popup .leaflet-popup-tip {
+            background-color: var(--color-secondary);
+            border-left: 1px solid var(--color-border);
+            border-bottom: 1px solid var(--color-border);
+            box-shadow: -2px 2px 5px rgba(0,0,0,0.2);
+        }
+        .custom-leaflet-popup .leaflet-popup-content {
+            margin: 0.75rem;
+            line-height: 1.6;
+            font-size: 0.9rem;
+            width: auto !important;
+        }
+        .custom-leaflet-popup a.leaflet-popup-close-button {
+            color: var(--color-text-light);
+            padding: 8px 8px 0 0;
+        }
+        .custom-leaflet-popup a.leaflet-popup-close-button:hover {
+            color: var(--color-highlight);
+        }
+
+
+        /* FIX: Estilo para los botones del menú móvil para que cambien de color con el tema */
+        .navbar-mobile-button {
+            color: var(--color-highlight);
+            transition: color 0.5s, background-color 0.3s;
+        }
+        body[data-theme='dark'] .navbar-mobile-button:hover,
+        body[data-theme='neptune'] .navbar-mobile-button:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        body[data-theme='terra'] .navbar-mobile-button:hover {
+             background-color: rgba(0, 0, 0, 0.05);
+        }
+        
+        /* Estilos del Chatbot */
+        #chatbot-toggle-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            background-color: var(--color-accent);
+            color: var(--color-primary);
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            box-shadow: 0 4px 15px rgba(var(--color-accent-rgb, 6, 182, 212), 0.5);
+            transition: all 0.3s;
+        }
+        #chatbot-toggle-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(var(--color-accent-rgb, 6, 182, 212), 0.7);
+        }
+
+        #chatbot-window {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 90vw;
+            max-width: 400px;
+            height: 70vh;
+            max-height: 550px;
+            z-index: 999;
+            background-color: var(--color-primary);
+            border: 1px solid var(--color-border);
+            border-radius: 1rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            transition: opacity 0.3s, transform 0.3s;
+        }
+
+        #chatbot-window.hidden {
+            opacity: 0;
+            transform: translateY(20px);
+            pointer-events: none;
+        }
+
+        #chat-header {
+            background-color: var(--color-secondary);
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--color-border);
+            border-top-left-radius: 1rem;
+            border-top-right-radius: 1rem;
+            cursor: move;
+        }
+        
+        #chat-messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .chat-message {
+            max-width: 80%;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.75rem;
+            line-height: 1.5;
+        }
+        .user-message {
+            align-self: flex-end;
+            background-color: var(--color-accent);
+            color: var(--color-primary);
+            border-bottom-right-radius: 0.25rem;
+        }
+        .bot-message {
+            align-self: flex-start;
+            background-color: var(--color-secondary);
+            color: var(--color-text-light);
+            border-bottom-left-radius: 0.25rem;
+        }
+        #chat-input-form {
+            border-top: 1px solid var(--color-border);
+            padding: 0.75rem;
+        }
+        #chat-input {
+            background-color: var(--color-secondary);
+            color: var(--color-text-light);
+        }
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--color-text-light);
+            opacity: 0.5;
+            animation: typing 1s infinite;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+
+        /* Estilos responsivos para el Chatbot */
+        @media (max-width: 768px) {
+            #chatbot-window {
+                width: calc(100% - 20px);
+                max-width: none;
+                height: calc(100% - 90px);
+                max-height: none;
+                bottom: 10px;
+                right: 10px;
+                left: 10px;
+                top: auto !important; /* Override drag inline styles */
+                transform: none !important; /* Override drag inline styles */
+            }
+            #chatbot-window.hidden {
+                transform: translateY(110%) !important; /* Slide out of view */
+                opacity: 0;
+            }
+            #chatbot-toggle-button {
+                bottom: 15px;
+                right: 15px;
+            }
+        }
+
+    </style>
+</head>
+<body data-theme="dark">
+
+    <!-- Navegación Fija Estilo SpaceX (Dark, High Contrast) -->
+    <nav class="fixed top-0 left-0 right-0 z-50 navbar">
+        <div class="container mx-auto px-4 flex justify-between items-center">
+            
+            <!-- Logo y Título -->
+            <div class="flex-shrink-0 flex items-center logo-area">
+                <img id="my-logo" 
+                     src="Logo.jpg" 
+                     alt="UrbanXplorer Logo" 
+                     class="w-12 h-12 md:w-14 md:h-14 mr-4 rounded-full object-cover" 
+                     onerror="this.onerror=null;this.src='https://placehold.co/56x56/FFFFFF/0D0D0D?text=LOGO';"
+                >
+                <h1 class="text-xl md:text-2xl font-extrabold tracking-tight uppercase">
+                    <span class="text-spacex-highlight" data-key="appName">UrbanXplorer</span>
+                </h1>
+            </div>
+
+            <!-- Botón de Menú Móvil -->
+            <div class="flex items-center md:hidden">
+                <button id="menu-toggle" class="navbar-mobile-button p-2 rounded-lg z-50">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+
+            <!-- Contenedor de Enlaces de Navegación (Desktop) -->
+            <div id="nav-links" class="nav-links-container hidden md:flex flex-grow justify-center items-center space-x-4 lg:space-x-8 text-sm">
+                <!-- Enlaces de navegación se gestionan por JS para el activo -->
+            </div>
+            
+            <!-- Elementos a la derecha del Navbar (Desktop) -->
+            <div class="hidden md:flex flex-shrink-0 items-center space-x-3">
+                 <!-- Selector de Tema (Color) -->
+                <button id="theme-toggle" class="flex items-center text-xs md:text-sm font-semibold px-3 py-1.5 text-white bg-gray-700 rounded-lg hover:bg-white hover:text-gray-900 transition">
+                    <i data-lucide="moon" class="w-4 h-4 mr-2"></i>
+                    <span id="current-theme-name" data-key="themeName">Oscuro</span>
+                </button>
+                 <!-- Selector de Idioma -->
+                <button id="lang-toggle" class="flex items-center text-xs md:text-sm font-semibold px-3 py-1.5 text-white bg-gray-700 rounded-lg hover:bg-white hover:text-gray-900 transition">
+                    <i data-lucide="languages" class="w-4 h-4 mr-2"></i>
+                    <span id="current-lang">English</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Menú Móvil (Pantalla Completa) -->
+    <div id="mobile-menu" class="md:hidden">
+        <div id="mobile-nav-links" class="flex flex-col items-center justify-center text-center space-y-6">
+            <!-- Enlaces móviles se llenan dinámicamente -->
+        </div>
+    </div>
+
+
+    <main class="py-0">
+
+        <!-- HERO SECTION - VISUAL GRANDE -->
+        <div id="hero-section" class="hero-section">
+            <div id="hero-overlay" class="hero-overlay"></div>
+            <div id="hero-content" class="hero-content">
+                <h2 class="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight uppercase mb-4 leading-tight" data-key="heroTitle">
+                    ¿Cómo un urbanista puede aprovechar los datos de la NASA para solucionar los problemas en la estructura urbana de la República Dominicana?
+                </h2>
+                
+                <!-- Botón de CTA Principal -->
+                 <a href="#views-container" class="inline-flex items-center px-8 py-3 text-lg font-bold main-cta-button rounded-full shadow-lg transition" onclick="showView('indicators')">
+                    <i data-lucide="chevron-down" class="w-6 h-6 mr-2"></i>
+                    <span data-key="heroCTA">Explorar Datos</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Contenedor principal para todas las vistas (añadimos padding aquí para espacio) -->
+        <div id="views-container" class="container mx-auto px-4 lg:px-6 py-8 lg:py-16">
+            
+            <!-- VISTA 1: INICIO / LANDING PAGE (Resumen de apartados) -->
+            <section id="home-view" class="view">
+                 <h3 class="animate-on-scroll text-3xl sm:text-4xl font-extrabold mb-10 lg:mb-16 text-spacex-highlight border-b border-gray-700 pb-3 text-center">
+                    <i data-lucide="rocket" class="w-7 h-7 inline-block text-white mr-2"></i>
+                    <span data-key="homeLandingHeader">Paneles de Análisis</span>
+                </h3>
+            
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10 max-w-7xl mx-auto">
+                    
+                    <!-- Tarjeta de Resumen: Indicadores Clave -->
+                    <div class="animate-on-scroll spacex-card flex flex-col justify-between" style="transition-delay: 100ms;">
+                        <div>
+                            <i data-lucide="bar-chart-3" class="w-8 h-8 mb-4 text-white"></i>
+                            <h4 class="text-xl lg:text-2xl font-bold mb-3 uppercase text-spacex-highlight" data-key="summaryIndicatorsTitle">Indicadores Clave</h4>
+                            <p class="text-base text-gray-400 mb-6" data-key="summaryIndicatorsText">
+                                Visualice métricas esenciales sobre urbanización, riesgo costero y congestión vehicular.
+                            </p>
+                        </div>
+                        <button class="inline-flex items-center justify-center px-6 py-3 text-sm font-bold main-cta-button rounded-lg mt-4" onclick="showView('indicators')">
+                            <i data-lucide="layout-dashboard" class="w-4 h-4 mr-2"></i>
+                            <span data-key="summaryIndicatorsButton">Ver Indicadores</span>
+                        </button>
+                    </div>
+
+                    <!-- Tarjeta de Resumen: Mapa Interactivo -->
+                     <div class="animate-on-scroll spacex-card flex flex-col justify-between" style="transition-delay: 200ms;">
+                        <div>
+                            <i data-lucide="globe-2" class="w-8 h-8 mb-4 text-white"></i>
+                            <h4 class="text-xl lg:text-2xl font-bold mb-3 uppercase text-spacex-highlight" data-key="summaryMapTitle">Mapa Interactivo</h4>
+                            <p class="text-base text-gray-400 mb-6" data-key="summaryMapText">
+                                Explore datos geoespaciales sobre zonas de riesgo, análisis urbano y puntos de interés.
+                            </p>
+                        </div>
+                        <button class="inline-flex items-center justify-center px-6 py-3 text-sm font-bold main-cta-button rounded-lg mt-4" onclick="showView('map')">
+                            <i data-lucide="map-pin" class="w-4 h-4 mr-2"></i>
+                            <span data-key="summaryMapButton">Explorar Mapa</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Tarjeta de Resumen: Impacto Ambiental -->
+                    <div class="animate-on-scroll spacex-card flex flex-col justify-between" style="transition-delay: 300ms;">
+                        <div>
+                            <i data-lucide="thermometer-sun" class="w-8 h-8 mb-4 text-white"></i>
+                            <h4 class="text-xl lg:text-2xl font-bold mb-3 uppercase text-spacex-highlight" data-key="summaryEnvTitle">Impacto Climático</h4>
+                            <p class="text-base text-gray-400 mb-6" data-key="summaryEnvText">
+                                Analice el efecto de la isla de calor urbano y otros factores climáticos en la población.
+                            </p>
+                        </div>
+                        <button class="inline-flex items-center justify-center px-6 py-3 text-sm font-bold main-cta-button rounded-lg mt-4" onclick="showView('environmental')">
+                            <i data-lucide="wind" class="w-4 h-4 mr-2"></i>
+                            <span data-key="summaryEnvButton">Ver Impacto</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- VISTA 2: INDICADORES CLAVE (Oculta por defecto) -->
+            <section id="indicators-view" class="view hidden">
+                
+                <h3 class="animate-on-scroll text-3xl sm:text-4xl font-extrabold mb-10 lg:mb-16 text-spacex-highlight border-b border-gray-700 pb-3">
+                    <i data-lucide="layout-dashboard" class="w-7 h-7 inline-block text-white mr-2"></i>
+                    <span data-key="homeHeader">Indicadores de Desarrollo y Riesgo</span>
+                </h3>
+
+                <!-- SLIDER DE IMÁGENES ESTILO SPACEX -->
+                <div class="animate-on-scroll slider-container mb-10 max-w-7xl mx-auto rounded-2xl overflow-hidden">
+                    <div class="slides" id="image-slider">
+                        <!-- El contenido del slider es generado por JavaScript -->
+                    </div>
+                </div>
+                <!-- FIN SLIDER -->
+                
+                <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-10 max-w-7xl mx-auto pt-4">
+                    
+                    <!-- Tarjetas de Contadores -->
+                    <div class="animate-on-scroll spacex-card text-center" style="transition-delay: 100ms;">
+                        <i data-lucide="home" class="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-4 text-white"></i>
+                        <p class="text-4xl sm:text-5xl font-extrabold mb-1">
+                            <span id="counter-urban" class="text-5xl sm:text-6xl counter-value">[XX.X]</span>%
+                        </p>
+                        <h4 class="text-lg sm:text-xl font-bold mt-4 mb-3 uppercase text-gray-300" data-key="cardUrbanTitle">Población Urbana</h4>
+                        <p class="text-sm sm:text-base text-gray-400" data-key="cardUrbanText">
+                            Porcentaje de la población que reside en áreas urbanizadas, un indicador clave del crecimiento.
+                        </p>
+                    </div>
+
+                    <div class="animate-on-scroll spacex-card text-center" style="transition-delay: 200ms;">
+                        <i data-lucide="alert-triangle" class="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-4 text-red-600"></i>
+                        <p class="text-4xl sm:text-5xl font-extrabold mb-1">
+                            <span id="counter-coastal" class="text-5xl sm:text-6xl counter-value text-red-600">[XX.X]</span>%
+                        </p>
+                        <h4 class="text-lg sm:text-xl font-bold mt-4 mb-3 uppercase text-gray-300" data-key="cardCoastalTitle">Riesgo Costero</h4>
+                        <p class="text-sm sm:text-base text-gray-400" data-key="cardCoastalText">
+                            Superficie construida a menos de 3 km del mar, expuesta a tormentas e inundaciones.
+                        </p>
+                    </div>
+
+                    <div class="animate-on-scroll spacex-card text-center" style="transition-delay: 300ms;">
+                        <i data-lucide="car" class="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-4 text-green-600"></i>
+                        <p class="text-4xl sm:text-5xl font-extrabold mb-1">
+                            <span id="counter-traffic" class="text-5xl sm:text-6xl counter-value text-green-600">[XX.X]</span>%
+                        </p>
+                        <h4 class="text-lg sm:text-xl font-bold mt-4 mb-3 uppercase text-gray-300" data-key="cardTrafficTitle">Congestión Vehicular</h4>
+                        <p class="text-sm sm:text-base text-gray-400" data-key="cardTrafficText">
+                            Nivel de congestión promedio en horas pico en el Gran Santo Domingo, afectando la movilidad.
+                        </p>
+                    </div>
+
+                </div>
+
+                <!-- Sección de Metodología animada -->
+                <section class="animate-on-scroll mt-10 lg:mt-16 p-6 sm:p-8 rounded-xl bg-gray-900 shadow-2xl border-t-4 border-white max-w-7xl mx-auto">
+                    <h4 class="text-xl sm:text-2xl font-bold mb-4 text-white flex items-center">
+                        <i data-lucide="rocket" class="w-6 h-6 mr-3 text-gray-400"></i>
+                        <span data-key="methodTitle">Metodología de Datos</span>
+                    </h4>
+                    <p class="text-base text-gray-300 mb-4 border-l-4 border-white pl-4" data-key="methodParagraph1">
+                        Los indicadores se derivan del análisis de imágenes satelitales de alta resolución de la NASA, procesadas mediante algoritmos de teledetección.
+                    </p>
+                    <p class="text-gray-400 italic text-sm" data-key="methodParagraph2">
+                        Estos datos permiten un monitoreo constante y preciso de los cambios en el paisaje urbano y natural del país.
+                    </p>
+                </section>
+            </section>
+            
+            <!-- VISTA 3: MAPA INTERACTIVO (Oculta por defecto) -->
+            <section id="map-view" class="view hidden">
+                <h2 class="text-3xl sm:text-4xl font-extrabold mb-8 border-b border-white pb-3 flex items-center text-spacex-highlight">
+                    <i data-lucide="map-pin" class="w-7 h-7 mr-2 text-white"></i>
+                    <span data-key="mapHeader">Mapa Interactivo de Zonas de Riesgo</span>
+                </h2>
+                
+                <div id="risk-alert" class="hidden p-4 mb-6 rounded-lg bg-red-900 bg-opacity-30 border border-red-700 text-white font-semibold flex items-center max-w-7xl mx-auto">
+                    <i data-lucide="alert-octagon" class="w-6 h-6 mr-3 flex-shrink-0"></i>
+                    <span id="alert-message">[Mensaje de alerta sobre el mapa.]</span>
+                </div>
+
+                <div id="leaflet-map-container" class="max-w-7xl mx-auto">
+                </div>
+                
+                <div class="mt-6 lg:mt-10 p-4 bg-gray-900 rounded-xl shadow border-l-4 border-white max-w-7xl mx-auto">
+                    <p class="text-sm text-gray-300" data-key="mapNote">
+                        <strong>Nota:</strong> Utilice el panel de capas para mostrar u ocultar las zonas según su nivel de riesgo. Haga clic en cada punto para ver más detalles.
+                    </p>
+                </div>
+
+                <!-- NEW: Recommendations Feature -->
+                <div class="mt-8 max-w-7xl mx-auto">
+                    <button id="generate-recommendations-button" class="w-full inline-flex items-center justify-center px-6 py-3 text-sm font-bold main-cta-button rounded-lg">
+                        <i data-lucide="sparkles" class="w-4 h-4 mr-2"></i>
+                        <span data-key="mapRecommendationsButton">Generar Recomendaciones Basadas en Capas Activas</span>
+                    </button>
+                    <div id="recommendations-loader" class="hidden mt-6 text-center">
+                        <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-spacex-highlight"></div>
+                        <p class="mt-2 text-gray-400" data-key="mapRecommendationsLoading">Analizando datos y generando plan de acción...</p>
+                    </div>
+                    <div id="recommendations-container" class="mt-6 hidden spacex-card">
+                        <h4 class="text-xl font-bold text-spacex-highlight mb-3 flex items-center">
+                            <i data-lucide="file-text" class="w-5 h-5 mr-2"></i>
+                            <span data-key="mapRecommendationsHeader">Plan de Acción Sugerido</span>
+                        </h4>
+                        <div id="recommendations-response" class="text-gray-300 whitespace-pre-wrap"></div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- VISTA 4: IMPACTO AMBIENTAL (Oculta por defecto) -->
+            <section id="environmental-view" class="view hidden">
+                <h2 class="text-3xl sm:text-4xl font-extrabold mb-8 border-b border-white pb-3 flex items-center text-spacex-highlight">
+                    <i data-lucide="cloud-lightning" class="w-7 h-7 mr-2 text-white"></i>
+                    <span data-key="envHeader">Impacto de la Urbanización en la Temperatura</span>
+                </h2>
+                <p class="text-base sm:text-lg text-gray-300 mb-10 max-w-7xl mx-auto" data-key="envSubtitle">
+                    El crecimiento urbano desordenado y la sobrepoblación han intensificado el efecto de isla de calor en República Dominicana.
+                </p>
+
+                <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-10 max-w-7xl mx-auto">
+                    <div class="animate-on-scroll spacex-card text-center" style="transition-delay: 100ms;">
+                        <i data-lucide="building-2" class="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-4 text-white"></i>
+                        <p class="text-4xl sm:text-5xl font-extrabold mb-1">
+                            <span id="counter-urban-pop" class="text-5xl sm:text-6xl counter-value"></span>%
+                        </p>
+                        <h4 class="text-lg sm:text-xl font-bold mt-4 mb-3 uppercase text-gray-300" data-key="cardUrbanPopTitle">Población Urbana (2018)</h4>
+                        <p class="text-sm sm:text-base text-gray-400" data-key="cardUrbanPopText">
+                           Crecimiento acelerado desde un 56.7% en 1994, alcanzando el promedio regional.
+                        </p>
+                    </div>
+
+                    <div class="animate-on-scroll spacex-card text-center" style="transition-delay: 200ms;">
+                        <i data-lucide="thermometer-sun" class="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-4 text-red-600"></i>
+                        <p class="text-4xl sm:text-5xl font-extrabold mb-1">
+                            <span class="text-5xl sm:text-6xl counter-value text-red-600">+</span><span id="counter-temp-increase" class="text-5xl sm:text-6xl counter-value text-red-600"></span><span class="text-2xl text-gray-400 ml-1">°C</span>
+                        </p>
+                        <h4 class="text-lg sm:text-xl font-bold mt-4 mb-3 uppercase text-gray-300" data-key="cardTempIncreaseTitle">Aumento de Temperatura</h4>
+                        <p class="text-sm sm:text-base text-gray-400" data-key="cardTempIncreaseText">
+                            Incremento registrado en la temperatura máxima anual en Santo Domingo debido a la isla de calor.
+                        </p>
+                    </div>
+
+                    <div class="animate-on-scroll spacex-card text-center" style="transition-delay: 300ms;">
+                        <i data-lucide="home-cross" class="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-4 text-red-600"></i>
+                        <p class="text-4xl sm:text-5xl font-extrabold mb-1">
+                            <span class="text-5xl sm:text-6xl counter-value text-red-600">></span><span id="counter-vulnerable-housing" class="text-5xl sm:text-6xl counter-value text-red-600"></span>%
+                        </p>
+                        <h4 class="text-lg sm:text-xl font-bold mt-4 mb-3 uppercase text-gray-300" data-key="cardVulnerableHousingTitle">Viviendas Vulnerables</h4>
+                        <p class="text-sm sm:text-base text-gray-400" data-key="cardVulnerableHousingText">
+                            Más de un tercio de la población vive en viviendas con alta exposición a eventos naturales y calor extremo.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="animate-on-scroll mt-10 lg:mt-16 p-6 sm:p-8 rounded-xl bg-gray-900 border-l-4 border-white max-w-7xl mx-auto text-gray-300 space-y-6">
+                    <div>
+                        <h4 class="text-xl font-bold text-white mb-2" data-key="urbanizationTitle">Urbanización Acelerada y Desordenada</h4>
+                        <ul class="list-disc list-inside space-y-1 pl-2 text-gray-400">
+                            <li data-key="urbanizationPoint1">Entre 1994 y 2018, la población urbana pasó de 56.7% a 81.7%.</li>
+                            <li data-key="urbanizationPoint2">El crecimiento ha sido no planificado, con expansión hacia zonas vulnerables.</li>
+                            <li data-key="urbanizationPoint3">Menos del 5% de los municipios tienen planes de ordenamiento territorial.</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="text-xl font-bold text-white mb-2" data-key="heatIslandTitle">Efecto Isla de Calor Urbano</h4>
+                        <ul class="list-disc list-inside space-y-1 pl-2 text-gray-400">
+                           <li data-key="heatIslandPoint1">Superficies pavimentadas y falta de vegetación elevan la temperatura local.</li>
+                           <li data-key="heatIslandPoint2">En Santo Domingo, el aumento ha llegado hasta +1.4 °C en la temperatura máxima anual.</li>
+                           <li data-key="heatIslandPoint3">Las noches más cálidas afectan la salud y aumentan el consumo energético.</li>
+                        </ul>
+                    </div>
+                     <div>
+                        <h4 class="text-xl font-bold text-white mb-2" data-key="hotspotsTitle">Puntos Críticos</h4>
+                         <ul class="list-disc list-inside space-y-1 pl-2 text-gray-400">
+                           <li data-key="hotspotsPoint1"><b>Santo Domingo:</b> Densidad extrema y crecimiento costero.</li>
+                           <li data-key="hotspotsPoint2"><b>Santiago y La Romana:</b> Expansión urbana sin regulación.</li>
+                           <li data-key="hotspotsPoint3"><b>Zonas costeras:</b> 25% de la construcción está a menos de 3 km del mar.</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- VISTA 5: INFORMACIÓN (Oculta por defecto) -->
+            <section id="info-view" class="view hidden">
+                <h2 class="text-3xl sm:text-4xl font-extrabold mb-8 border-b border-white pb-3 flex items-center text-spacex-highlight">
+                    <i data-lucide="info" class="w-7 h-7 mr-2 text-white"></i>
+                    <span data-key="infoHeader">Sobre el Proyecto</span>
+                </h2>
+                <div class="bg-gray-900 p-6 sm:p-8 lg:p-10 rounded-xl shadow-lg border-t-4 border-white max-w-7xl mx-auto space-y-8">
+                    
+                    <div>
+                        <p class="text-xl font-semibold text-white mb-4" data-key="infoWhyTitle">¿Por qué UrbanXplorer?</p>
+                        <p class="text-gray-300 border-l-4 border-gray-700 pl-4" data-key="infoWhyText">
+                            UrbanXplorer nace de la necesidad de abordar los desafíos urbanos de la República Dominicana con herramientas del siglo XXI. Ante un crecimiento acelerado y no planificado, es crucial utilizar datos precisos para tomar decisiones informadas que mejoren la calidad de vida y fomenten un desarrollo sostenible y resiliente.
+                        </p>
+                    </div>
+
+                    <div>
+                         <p class="text-xl font-semibold text-white mb-4" data-key="infoHowTitle">¿Cómo Funciona?</p>
+                        <p class="text-gray-300 border-l-4 border-gray-700 pl-4" data-key="infoHowText">
+                            Nuestra plataforma integra y procesa datos de múltiples fuentes satelitales de la NASA, como Landsat y VIIRS, para analizar la expansión urbana, la densidad de población, la calidad del aire y el efecto de isla de calor. Estos datos se presentan a través de indicadores, mapas interactivos y un asistente de IA para ofrecer una visión clara y accionable a los planificadores urbanos.
+                        </p>
+                    </div>
+                    
+                    <div>
+                         <p class="text-xl font-semibold text-white mb-4" data-key="infoTeamTitle">Nuestro Equipo</p>
+                        <p class="text-gray-300 border-l-4 border-gray-700 pl-4 text-spacex-highlight font-bold text-lg" data-key="infoTeamText">
+                            spacemakers
+                        </p>
+                    </div>
+
+                    <a href="https://www.spaceappschallenge.org/2025/find-a-team/spacemakers1/" target="_blank" class="inline-flex items-center px-6 py-3 text-sm font-semibold text-gray-900 bg-white rounded-lg hover:bg-gray-200 transition mt-8" data-key="navPortal">
+                        <i data-lucide="external-link" class="w-4 h-4 mr-2"></i>
+                        Página del Equipo
+                    </a>
+                </div>
+            </section>
+        </div>
+
+    </main>
+    
+    <!-- Chatbot flotante -->
+    <div id="chatbot-container">
+        <div id="chatbot-window" class="hidden">
+            <div id="chat-header" class="flex justify-between items-center">
+                <div class="flex items-center">
+                    <i data-lucide="brain-circuit" class="w-5 h-5 mr-2"></i>
+                    <h3 class="text-base font-bold" data-key="chatHeader">Asistente IA</h3>
+                </div>
+                <button id="close-chat-button" class="text-gray-400 hover:text-white">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div id="chat-messages">
+                <!-- Los mensajes del chat se insertarán aquí -->
+            </div>
+            <form id="chat-input-form" class="flex items-center gap-2">
+                <input type="text" id="chat-input" class="w-full border border-gray-700 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-spacex-highlight transition" placeholder="Escribe tu pregunta..." data-key="chatPlaceholder">
+                <button type="submit" id="chat-submit-button" class="p-2 main-cta-button rounded-lg">
+                    <i data-lucide="send" class="w-5 h-5"></i>
+                </button>
+            </form>
+        </div>
+        <button id="chatbot-toggle-button" class="flex items-center justify-center">
+            <i data-lucide="message-circle" class="w-8 h-8"></i>
+        </button>
+    </div>
+
+
+    <!-- NUEVO: Carga de Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    
+    <!-- Pie de Página Estilo Footer de SpaceX -->
+    <footer class="mt-16 p-6 md:p-8 text-center text-sm text-gray-400 bg-gray-900 border-t border-gray-700">
+        <p class="font-bold mb-1 text-white" data-key="footerTitle">UrbanXplorer 2025</p>
+        <p data-key="footerText1">Datos para una mejor planificación urbana en la República Dominicana.</p>
+        <p class="text-xs mt-2 text-gray-500" data-key="footerText2">© SpaceMakers - NASA International Space Apps Challenge.</p>
+    </footer>
+
+    <script>
+        // Inicialización de Lucide Icons
+        lucide.createIcons();
+        
+        // Variable global para el mapa y las capas
+        let leafletMap = null;
+        let overlayLayers = {}; 
+
+        // --- SVG Icons for Leaflet Controls ---
+        const ICONS_SVG = {
+            'alert-octagon': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block mr-2 align-middle" style="stroke: #DC2626;"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>',
+            'alert-triangle': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block mr-2 align-middle" style="stroke: #F59E0B;"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
+            'shield-alert': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block mr-2 align-middle" style="stroke: #3B82F6;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>',
+            'lightbulb-off': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block mr-2 align-middle" style="stroke: #FFD700;"><path d="M9 18h6m-3-3v3M2 2l20 20M8.56 8.56A6 6 0 0 0 14 14a6 6 0 0 0 .81-3.31"></path><path d="M16.13 16.13A6.002 6.002 0 0 1 12 18a6 6 0 0 1-6-6c0-1.5.56-2.87 1.43-3.95"></path><path d="M4.32 4.32A6 6 0 0 1 12 6a6 6 0 0 1 4.54 1.94"></path></svg>',
+            'power-off': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block mr-2 align-middle" style="stroke: #9333ea;"><path d="M18.36 6.64A9 9 0 1 1 5.64 6.64"/><line x1="12" y1="2" x2="12" y2="12"/></svg>',
+            'waves': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block mr-2 align-middle" style="stroke: #be123c;"><path d="M3 6c.75 2.5 2.5 4 5 4s4.25-1.5 5-4c.75 2.5 2.5 4 5 4"></path><path d="M3 12c.75 2.5 2.5 4 5 4s4.25-1.5 5-4c.75 2.5 2.5 4 5 4"></path><path d="M3 18c.75 2.5 2.5 4 5 4s4.25-1.5 5-4c.75 2.5 2.5 4 5 4"></path></svg>',
+            'home': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block mr-2 align-middle" style="stroke: #16a34a;"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>',
+            'axe': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block mr-2 align-middle" style="stroke: #a16207;"><path d="m14 12-8.5 8.5a2.12 2.12 0 1 1-3-3L11 9"></path><path d="M15 13 9 7l4-4 6 6h3l-3 3-3 3-3-3 3-3z"></path></svg>',
+            'shield-check': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block mr-2 align-middle" style="stroke: #1d4ed8;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>',
+            'zap': '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block mr-2 align-middle" style="stroke: #ef4444;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>'
+        };
+
+        // ------------------------------------------------------------------
+        // INICIA LA SECCIÓN DE TRADUCCIÓN DE IDIOMAS Y TEMAS
+        // ------------------------------------------------------------------
+
+        const THEMES = [
+            { id: 'dark', name_es: 'Oscuro', name_en: 'Dark', accent_rgb: '6, 182, 212' },
+            { id: 'terra', name_es: 'Terra (Claro)', name_en: 'Terra (Light)', accent_rgb: '29, 78, 216' },
+            { id: 'neptune', name_es: 'Neptuno (Azul)', name_en: 'Neptune (Blue)', accent_rgb: '147, 197, 253' }
+        ];
+
+        let currentThemeIndex = 0; // Inicia en 'dark'
+        let currentLang = 'es'; 
+
+        const TRANSLATIONS = {
+            'es': {
+                'pageTitle': 'UrbanXplorer | Monitoreo Urbano Satelital',
+                'appName': 'UrbanXplorer',
+                'navHome': 'INICIO',
+                'navIndicators': 'INDICADORES',
+                'navMap': 'MAPA',
+                'navEnvironmental': 'IMPACTO',
+                'navInfo': 'INFORMACIÓN',
+                'navPortal': 'Página del Equipo',
+                'langName': 'English',
+                'themeName': THEMES[currentThemeIndex].name_es, 
+                'heroTitle': '¿Cómo un urbanista puede aprovechar los datos de la NASA para solucionar los problemas en la estructura urbana de la República Dominicana?',
+                'heroCTA': 'Explorar Datos',
+                'homeLandingHeader': 'Paneles de Análisis',
+                'summaryIndicatorsTitle': 'Indicadores Clave',
+                'summaryIndicatorsText': 'Visualice métricas esenciales sobre urbanización, riesgo costero y congestión vehicular.',
+                'summaryIndicatorsButton': 'Ver Indicadores',
+                'summaryMapTitle': 'Mapa Interactivo',
+                'summaryMapText': 'Explore datos geoespaciales sobre zonas de riesgo, análisis urbano y puntos de interés.',
+                'summaryMapButton': 'Explorar Mapa',
+                'summaryEnvTitle': 'Impacto Climático',
+                'summaryEnvText': 'Analice el efecto de la isla de calor urbano y otros factores climáticos en la población.',
+                'summaryEnvButton': 'Ver Impacto',
+                'homeHeader': 'Indicadores de Desarrollo y Riesgo',
+                'cardUrbanTitle': 'Población Urbana',
+                'cardUrbanText': 'Porcentaje de la población que reside en áreas urbanizadas, un indicador clave del crecimiento.',
+                'cardCoastalTitle': 'Riesgo Costero',
+                'cardCoastalText': 'Superficie construida a menos de 3 km del mar, expuesta a tormentas e inundaciones.',
+                'cardTrafficTitle': 'Congestión Vehicular',
+                'cardTrafficText': 'Nivel de congestión promedio en horas pico en el Gran Santo Domingo, afectando la movilidad.',
+                'methodTitle': 'Metodología de Datos',
+                'methodParagraph1': 'Los indicadores se derivan del análisis de imágenes satelitales de alta resolución de la NASA, procesadas mediante algoritmos de teledetección.',
+                'methodParagraph2': 'Estos datos permiten un monitoreo constante y preciso de los cambios en el paisaje urbano y natural del país.',
+                'mapHeader': 'Mapa Interactivo de Zonas de Riesgo',
+                'mapNote': '**Nota:** Utilice el panel de capas para mostrar u ocultar las zonas según su nivel de riesgo. Haga clic en cada punto para ver más detalles.',
+                'envHeader': 'Impacto de la Urbanización en la Temperatura',
+                'envSubtitle': 'El crecimiento urbano desordenado y la sobrepoblación han intensificado el efecto de isla de calor en República Dominicana.',
+                'cardUrbanPopTitle': 'Población Urbana (2018)',
+                'cardUrbanPopText': 'Crecimiento acelerado desde un 56.7% en 1994, alcanzando el promedio regional.',
+                'cardTempIncreaseTitle': 'Aumento Temp. Urbana',
+                'cardTempIncreaseText': 'Incremento registrado en la temperatura máxima anual en Santo Domingo debido a la isla de calor.',
+                'cardVulnerableHousingTitle': 'Viviendas Vulnerables',
+                'cardVulnerableHousingText': 'Más de un tercio de la población vive en viviendas con alta exposición a eventos naturales y calor extremo.',
+                'urbanizationTitle': 'Urbanización Acelerada y Desordenada',
+                'urbanizationPoint1': 'Entre 1994 y 2018, la población urbana pasó de 56.7% a 81.7%.',
+                'urbanizationPoint2': 'El crecimiento ha sido no planificado, con expansión hacia zonas vulnerables.',
+                'urbanizationPoint3': 'Menos del 5% de los municipios tienen planes de ordenamiento territorial.',
+                'heatIslandTitle': 'Efecto Isla de Calor Urbano',
+                'heatIslandPoint1': 'Superficies pavimentadas y falta de vegetación elevan la temperatura local.',
+                'heatIslandPoint2': 'En Santo Domingo, el aumento ha llegado hasta +1.4 °C en la temperatura máxima anual.',
+                'heatIslandPoint3': 'Las noches más cálidas afectan la salud y aumentan el consumo energético.',
+                'hotspotsTitle': 'Puntos Críticos',
+                'hotspotsPoint1': '<b>Santo Domingo:</b> Densidad extrema y crecimiento costero.',
+                'hotspotsPoint2': '<b>Santiago y La Romana:</b> Expansión urbana sin regulación.',
+                'hotspotsPoint3': '<b>Zonas costeras:</b> 25% de la construcción está a menos de 3 km del mar.',
+                'chatHeader': 'Asistente IA',
+                'chatWelcome': '¡Hola! Soy tu asistente de análisis urbano. ¿En qué puedo ayudarte hoy?',
+                'chatPlaceholder': 'Escribe tu pregunta...',
+                'mapRecommendationsButton': '✨ Generar Recomendaciones Basadas en Capas Activas',
+                'mapRecommendationsLoading': 'Analizando datos y generando plan de acción...',
+                'mapRecommendationsHeader': 'Plan de Acción Sugerido',
+                'mapRecommendationsNoLayers': 'Por favor, active al menos una capa de análisis en el mapa para generar recomendaciones.',
+                'infoHeader': 'Sobre el Proyecto',
+                'infoWhyTitle': '¿Por qué UrbanXplorer?',
+                'infoWhyText': 'UrbanXplorer nace de la necesidad de abordar los desafíos urbanos de la República Dominicana con herramientas del siglo XXI. Ante un crecimiento acelerado y no planificado, es crucial utilizar datos precisos para tomar decisiones informadas que mejoren la calidad de vida y fomenten un desarrollo sostenible y resiliente.',
+                'infoHowTitle': '¿Cómo Funciona?',
+                'infoHowText': 'Nuestra plataforma integra y procesa datos de múltiples fuentes satelitales de la NASA, como Landsat y VIIRS, para analizar la expansión urbana, la densidad de población, la calidad del aire y el efecto de isla de calor. Estos datos se presentan a través de indicadores, mapas interactivos y un asistente de IA para ofrecer una visión clara y accionable a los planificadores urbanos.',
+                'infoTeamTitle': 'Nuestro Equipo',
+                'infoTeamText': 'SpaceMakers',
+                'footerTitle': 'UrbanXplorer 2025',
+                'footerText1': 'Datos para una mejor planificación urbana en la República Dominicana.',
+                'footerText2': '© SpaceMakers- NASA International Space Apps Challenge.',
+                'alertMessageTemplate': 'ALERTA: Zonas de alto riesgo detectadas en $ZONES.',
+                'alertMessageSingle': 'ALERTA: Zona de mayor riesgo detectada.',
+                'slide1Caption': 'Análisis Satelital Nocturno',
+                'slide2Caption': 'Expansión Urbana Monitoreada',
+                'slide3Caption': 'Impacto del Calor en Ciudades',
+                'slideButton': 'VER DATOS',
+                'legendTitleRisk': 'Riesgo por Densidad Poblacional',
+                'legendTitleAnalysis': 'Análisis Urbano',
+                'legendRiskVeryHigh': 'Muy Alto',
+                'legendRiskHigh': 'Alto',
+                'legendRiskMedium': 'Medio',
+                'layerRiskVeryHigh': 'Población - Riesgo Muy Alto',
+                'layerRiskHigh': 'Población - Riesgo Alto',
+                'layerRiskMedium': 'Población - Riesgo Medio',
+                'legendLowLight': 'Ausencia de luz',
+                'legendSewer': 'Alcantarillado',
+                'legendDeforested': 'Zonas Desprotegidas (Deforestadas)',
+                'legendProtected': 'Áreas Protegidas',
+                'legendElectricalFaults': 'Fallos Eléctricos',
+                'baseMapDark': 'Fondo Oscuro',
+                'baseMapStreet': 'Mapa de Calles',
+                'baseMapSatellite': 'Imágenes Satelitales',
+                'popupRisk': 'Riesgo',
+                'popupPopulation': 'Población'
+            },
+            'en': {
+                'pageTitle': 'UrbanXplorer | Satellite Urban Monitoring',
+                'appName': 'UrbanXplorer',
+                'navHome': 'HOME',
+                'navIndicators': 'INDICATORS',
+                'navMap': 'MAP',
+                'navEnvironmental': 'IMPACT',
+                'navInfo': 'ABOUT',
+                'navPortal': 'Team Page',
+                'langName': 'Español',
+                'themeName': THEMES[currentThemeIndex].name_en, 
+                'heroTitle': 'How can an urban planner use NASA data to solve problems in the urban structure of the Dominican Republic?',
+                'heroCTA': 'Explore Data',
+                'homeLandingHeader': 'Analysis Panels',
+                'summaryIndicatorsTitle': 'Key Indicators',
+                'summaryIndicatorsText': 'Visualize essential metrics on urbanization, coastal risk, and traffic congestion.',
+                'summaryIndicatorsButton': 'View Indicators',
+                'summaryMapTitle': 'Interactive Map',
+                'summaryMapText': 'Explore geospatial data on risk zones, urban analysis, and points of interest.',
+                'summaryMapButton': 'Explore Map',
+                'summaryEnvTitle': 'Climate Impact',
+                'summaryEnvText': 'Analyze the urban heat island effect and other climate factors on the population.',
+                'summaryEnvButton': 'View Impact',
+                'homeHeader': 'Development and Risk Indicators',
+                'cardUrbanTitle': 'Urban Population',
+                'cardUrbanText': 'Percentage of the population residing in urbanized areas, a key indicator of growth.',
+                'cardCoastalTitle': 'Coastal Risk',
+                'cardCoastalText': 'Built-up area within 3 km of the sea, exposed to storms and floods.',
+                'cardTrafficTitle': 'Traffic Congestion',
+                'cardTrafficText': 'Average congestion level during peak hours in Greater Santo Domingo, affecting mobility.',
+                'methodTitle': 'Data Methodology',
+                'methodParagraph1': 'The indicators are derived from the analysis of high-resolution satellite images from NASA, processed using remote sensing algorithms.',
+                'methodParagraph2': 'This data allows for constant and precise monitoring of changes in the country\'s urban and natural landscape.',
+                'mapHeader': 'Interactive Map of Risk Zones',
+                'mapNote': '**Note:** Use the layer panel to show or hide zones based on their risk level. Click on each point for more details.',
+                'envHeader': 'Impact of Urbanization on Temperature',
+                'envSubtitle': 'Disordered urban growth and overpopulation have intensified the heat island effect in the Dominican Republic.',
+                'cardUrbanPopTitle': 'Urban Population (2018)',
+                'cardUrbanPopText': 'Accelerated growth from 56.7% in 1994, reaching the regional average.',
+                'cardTempIncreaseTitle': 'Urban Temp. Increase',
+                'cardTempIncreaseText': 'Recorded increase in the maximum annual temperature in Santo Domingo due to the heat island effect.',
+                'cardVulnerableHousingTitle': 'Vulnerable Housing',
+                'cardVulnerableHousingText': 'More than a third of the population lives in housing with high exposure to natural events and extreme heat.',
+                'urbanizationTitle': 'Accelerated and Unplanned Urbanization',
+                'urbanizationPoint1': 'Between 1994 and 2018, the urban population grew from 56.7% to 81.7%.',
+                'urbanizationPoint2': 'Growth has been unplanned, with expansion into vulnerable areas.',
+                'urbanizationPoint3': 'Less than 5% of municipalities have land use plans.',
+                'heatIslandTitle': 'Urban Heat Island Effect',
+                'heatIslandPoint1': 'Paved surfaces and lack of vegetation raise local temperatures.',
+                'heatIslandPoint2': 'In Santo Domingo, the increase has reached up to +1.4 °C in the maximum annual temperature.',
+                'heatIslandPoint3': 'Warmer nights affect health and increase energy consumption.',
+                'hotspotsTitle': 'Critical Hotspots',
+                'hotspotsPoint1': '<b>Santo Domingo:</b> Extreme density and coastal growth.',
+                'hotspotsPoint2': '<b>Santiago & La Romana:</b> Unregulated urban expansion.',
+                'hotspotsPoint3': '<b>Coastal zones:</b> 25% of construction is within 3 km of the sea.',
+                'chatHeader': 'AI Assistant',
+                'chatWelcome': 'Hello! I am your urban analysis assistant. How can I help you today?',
+                'chatPlaceholder': 'Type your question...',
+                'mapRecommendationsButton': '✨ Generate Recommendations Based on Active Layers',
+                'mapRecommendationsLoading': 'Analyzing data and generating action plan...',
+                'mapRecommendationsHeader': 'Suggested Action Plan',
+                'mapRecommendationsNoLayers': 'Please activate at least one analysis layer on the map to generate recommendations.',
+                'infoHeader': 'About the Project',
+                'infoWhyTitle': 'Why UrbanXplorer?',
+                'infoWhyText': 'UrbanXplorer was born from the need to address the urban challenges of the Dominican Republic with 21st-century tools. Faced with rapid and unplanned growth, it is crucial to use accurate data to make informed decisions that improve quality of life and promote sustainable and resilient development.',
+                'infoHowTitle': 'How Does It Work?',
+                'infoHowText': 'Our platform integrates and processes data from multiple NASA satellite sources, such as Landsat and VIIRS, to analyze urban expansion, population density, air quality, and the urban heat island effect. This data is presented through indicators, interactive maps, and an AI assistant to offer a clear and actionable vision for urban planners.',
+                'infoTeamTitle': 'Our Team',
+                'infoTeamText': 'SpaceMakers',
+                'footerTitle': 'UrbanXplorer 2025',
+                'footerText1': 'Data for better urban planning in the Dominican Republic.',
+                'footerText2': '© SpaceMakers - NASA International Space Apps Challenge.',
+                'alertMessageTemplate': 'ALERT: High-risk zones detected in $ZONES.',
+                'alertMessageSingle': 'ALERT: Highest risk zone detected.',
+                'slide1Caption': 'Nighttime Satellite Analysis',
+                'slide2Caption': 'Monitored Urban Expansion',
+                'slide3Caption': 'Heat Impact in Cities',
+                'slideButton': 'VIEW DATA',
+                'legendTitleRisk': 'Risk by Population Density',
+                'legendTitleAnalysis': 'Urban Analysis',
+                'legendRiskVeryHigh': 'Very High',
+                'legendRiskHigh': 'High',
+                'legendRiskMedium': 'Medium',
+                'layerRiskVeryHigh': 'Population - Very High Risk',
+                'layerRiskHigh': 'Population - High Risk',
+                'layerRiskMedium': 'Population - Medium Risk',
+                'legendLowLight': 'Low Light',
+                'legendSewer': 'Sewerage',
+                'legendDeforested': 'Unprotected Zones (Deforested)',
+                'legendProtected': 'Protected Areas',
+                'legendElectricalFaults': 'Electrical Faults',
+                'baseMapDark': 'Dark Background',
+                'baseMapStreet': 'Street Map',
+                'baseMapSatellite': 'Satellite Imagery',
+                'popupRisk': 'Risk',
+                'popupPopulation': 'Population'
+            }
+        };
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            document.documentElement.lang = lang; 
+            const texts = TRANSLATIONS[lang];
+            
+            // 1. Traduce el nombre del tema actual
+            texts['themeName'] = lang === 'es' ? THEMES[currentThemeIndex].name_es : THEMES[currentThemeIndex].name_en;
+
+            // 2. Traducción de elementos con data-key
+            document.querySelectorAll('[data-key]').forEach(element => {
+                const key = element.getAttribute('data-key');
+                if (texts[key]) {
+                    if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+                        element.placeholder = texts[key];
+                    } else {
+                        element.innerHTML = texts[key];
+                    }
+                }
+            });
+            
+            // Add welcome message if chat is empty
+            const chatMessages = document.getElementById('chat-messages');
+            if (chatMessages && chatMessages.children.length <= 1) { // Only welcome message
+                const welcomeMessage = chatMessages.querySelector('.bot-message');
+                if(welcomeMessage) welcomeMessage.textContent = texts['chatWelcome'];
+            }
+
+
+            // 3. Actualiza el texto del botón de idioma
+            const langToggleSpan = document.getElementById('current-lang');
+            if (langToggleSpan) {
+                langToggleSpan.textContent = texts['langName'];
+            }
+            
+            // 4. Re-renderiza las slides (para los captions)
+            renderSlides();
+            
+            // 5. Re-renderiza los iconos y actualiza la alerta
+            lucide.createIcons();
+            updateRiskAlertMessage();
+            
+            // 6. Actualiza los enlaces de navegación desktop y mobile
+            renderNavLinks();
+            
+            // 7. Re-initialize map if it's visible to update legend and layer names
+            if (leafletMap && !document.getElementById('map-view').classList.contains('hidden')) {
+                initLeafletMap();
+            }
+        }
+
+        function toggleLanguage() {
+            const newLang = currentLang === 'es' ? 'en' : 'es';
+            setLanguage(newLang);
+        }
+
+        // Asigna el evento de alternancia de idioma
+        document.getElementById('lang-toggle').addEventListener('click', toggleLanguage);
+
+        // --- Lógica del Selector de Tema (Color) ---
+
+        function setTheme(themeId) {
+            document.body.setAttribute('data-theme', themeId);
+            currentThemeIndex = THEMES.findIndex(t => t.id === themeId);
+            
+            // Actualiza el texto del botón de tema y el color de acento para la sombra
+            const currentThemeData = THEMES[currentThemeIndex];
+            document.documentElement.style.setProperty('--color-accent-rgb', currentThemeData.accent_rgb);
+            
+            const themeNameSpan = document.getElementById('current-theme-name');
+            const themeIcon = document.querySelector('#theme-toggle i[data-lucide]');
+            const themeIconMobile = document.querySelector('#theme-toggle-mobile i[data-lucide]');
+            
+            if (themeNameSpan) {
+                 themeNameSpan.textContent = currentLang === 'es' ? currentThemeData.name_es : currentThemeData.name_en;
+            }
+            
+            // Cambia el icono basado en el tema
+            const iconName = (themeId === 'dark' || themeId === 'neptune') ? 'moon' : 'sun';
+            if (themeIcon) {
+                themeIcon.setAttribute('data-lucide', iconName);
+            }
+            if (themeIconMobile) {
+                 themeIconMobile.setAttribute('data-lucide', iconName);
+            }
+            
+            lucide.createIcons();
+        }
+
+        function toggleTheme() {
+            currentThemeIndex = (currentThemeIndex + 1) % THEMES.length;
+            setTheme(THEMES[currentThemeIndex].id);
+        }
+        
+        // Asigna el evento de alternancia de tema
+        document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+        
+        // ------------------------------------------------------------------
+        // Lógica de Menú Móvil y Navegación
+        // ------------------------------------------------------------------
+        const menuToggle = document.getElementById('menu-toggle');
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        function renderNavLinks() {
+            const texts = TRANSLATIONS[currentLang];
+            const desktopContainer = document.getElementById('nav-links');
+            const mobileContainer = document.getElementById('mobile-nav-links');
+            const currentView = document.querySelector('.view:not(.hidden)').id.replace('-view', '');
+
+            // Limpia contenedores
+            desktopContainer.innerHTML = '';
+            mobileContainer.innerHTML = '';
+
+            // Genera enlaces
+            navItems.forEach(item => {
+                const isActive = item.view === currentView;
+                // Enlaces Desktop
+                const desktopLink = `
+                    <a href="#" class="nav-link flex items-center text-gray-400 pb-2 transition ${isActive ? 'active' : ''}" data-view="${item.view}">
+                        <i data-lucide="${item.icon}" class="w-5 h-5 mr-1 ${isActive ? 'text-spacex-highlight' : ''}"></i>
+                        <span data-key="${item.key}">${texts[item.key]}</span>
+                    </a>
+                `;
+                desktopContainer.innerHTML += desktopLink;
+
+                // Enlaces Móvil
+                const mobileLink = `
+                    <a href="#" class="mobile-nav-link nav-link flex items-center justify-center text-2xl font-bold text-gray-400 p-3 rounded-lg transition ${isActive ? 'active' : ''}" data-view="${item.view}">
+                        <i data-lucide="${item.icon}" class="w-6 h-6 mr-3"></i>
+                        <span data-key="${item.key}">${texts[item.key]}</span>
+                    </a>
+                `;
+                mobileContainer.innerHTML += mobileLink;
+            });
+            
+            // Agrega botones de acción al menú móvil (Idioma y Tema)
+            mobileContainer.innerHTML += `
+                <div class="border-t border-gray-700 my-4 w-1/2 mx-auto"></div>
+                <div class="flex items-center justify-center space-x-4">
+                    <button id="theme-toggle-mobile" class="navbar-mobile-button p-3 rounded-lg flex items-center text-lg">
+                         <i data-lucide="${(THEMES[currentThemeIndex].id === 'dark' || THEMES[currentThemeIndex].id === 'neptune') ? 'moon' : 'sun'}" class="w-5 h-5 mr-2"></i>
+                         ${currentLang === 'es' ? THEMES[currentThemeIndex].name_es : THEMES[currentThemeIndex].name_en}
+                    </button>
+                    <button onclick="toggleLanguage()" class="navbar-mobile-button p-3 rounded-lg flex items-center text-lg">
+                        <i data-lucide="languages" class="w-5 h-5 mr-2"></i>
+                        <span>${texts['langName']}</span>
+                    </button>
+                </div>
+                <a href="https://www.spaceappschallenge.org/2025/find-a-team/spacemakers1/" target="_blank" class="mobile-nav-link inline-flex items-center justify-center px-6 py-3 text-sm font-semibold text-white bg-gray-800 rounded-lg hover:bg-white hover:text-gray-900 transition mt-8" data-key="navPortal">
+                    <i data-lucide="external-link" class="w-4 h-4 mr-2"></i>
+                    ${texts['navPortal']}
+                </a>
+            `;
+
+            // Vuelve a asignar el evento de tema para el botón móvil recién creado
+            document.getElementById('theme-toggle-mobile').addEventListener('click', toggleTheme);
+
+            lucide.createIcons();
+        }
+
+        const navItems = [
+            { view: 'home', icon: 'home', key: 'navHome' },
+            { view: 'indicators', icon: 'layout-dashboard', key: 'navIndicators' },
+            { view: 'map', icon: 'map', key: 'navMap' },
+            { view: 'environmental', icon: 'cloud-lightning', key: 'navEnvironmental' },
+            { view: 'info', icon: 'info', key: 'navInfo' }
+        ];
+        
+        function handleDelegatedNavClick(e) {
+            const link = e.target.closest('.nav-link');
+            if (link && link.dataset.view) {
+                e.preventDefault();
+                const viewId = link.dataset.view;
+                showView(viewId);
+                
+                // Cierra el menú móvil si estaba abierto
+                if (mobileMenu.classList.contains('open')) {
+                    mobileMenu.classList.remove('open');
+                    if (menuToggle) {
+                        menuToggle.innerHTML = `<i data-lucide="menu" class="w-6 h-6"></i>`;
+                        lucide.createIcons();
+                    }
+                }
+            }
+        }
+
+        menuToggle.addEventListener('click', () => {
+            const isOpen = mobileMenu.classList.toggle('open');
+            if (menuToggle) {
+                menuToggle.innerHTML = `<i data-lucide="${isOpen ? 'x' : 'menu'}" class="w-6 h-6"></i>`;
+            }
+            lucide.createIcons();
+        });
+        
+        // ------------------------------------------------------------------
+        // DATOS (Reemplazar con sus datos reales)
+        // ------------------------------------------------------------------
+        const MOCK_DATA = { urban: 83.2, coastal: 25.0, traffic: 45.5 };
+        const MOCK_ENVIRONMENTAL_DATA = { urban_pop: 81.7, temp_increase: 1.4, vulnerable_housing: 34.0 };
+        const MOCK_GEOJSON_DATA = {
+            "type": "FeatureCollection",
+            "features": [
+                // Risk: Muy Alto (>1.5M)
+                { "type": "Feature", "properties": { "name": "Santo Domingo", "risk": "Muy Alto", "population": 2995211, "risk_level_num": 3 }, "geometry": { "type": "Point", "coordinates": [-69.931212, 18.486058] } },
+                { "type": "Feature", "properties": { "name": "Santiago", "risk": "Muy Alto", "population": 1833451, "risk_level_num": 3 }, "geometry": { "type": "Point", "coordinates": [-70.7088, 19.4517] } },
+                { "type": "Feature", "properties": { "name": "Distrito Nacional", "risk": "Muy Alto", "population": 1484789, "risk_level_num": 3 }, "geometry": { "type": "Point", "coordinates": [-69.8923, 18.4719] } },
+                // Risk: Alto (300k - 1.5M)
+                { "type": "Feature", "properties": { "name": "San Cristóbal", "risk": "Alto", "population": 859741, "risk_level_num": 2 }, "geometry": { "type": "Point", "coordinates": [-70.10, 18.42] } },
+                { "type": "Feature", "properties": { "name": "La Vega", "risk": "Alto", "population": 420478, "risk_level_num": 2 }, "geometry": { "type": "Point", "coordinates": [-70.529, 19.223] } },
+                { "type": "Feature", "properties": { "name": "Puerto Plata", "risk": "Alto", "population": 490733, "risk_level_num": 2 }, "geometry": { "type": "Point", "coordinates": [-70.688, 19.79] } },
+                { "type": "Feature", "properties": { "name": "Duarte", "risk": "Alto", "population": 384789, "risk_level_num": 2 }, "geometry": { "type": "Point", "coordinates": [-70.25, 19.30] } },
+                { "type": "Feature", "properties": { "name": "San Pedro de Macorís", "risk": "Alto", "population": 418850, "risk_level_num": 2 }, "geometry": { "type": "Point", "coordinates": [-69.308, 18.455] } },
+                { "type": "Feature", "properties": { "name": "La Altagracia", "risk": "Alto", "population": 335677, "risk_level_num": 2 }, "geometry": { "type": "Point", "coordinates": [-68.708, 18.615] } },
+                { "type": "Feature", "properties": { "name": "Espaillat", "risk": "Alto", "population": 390478, "risk_level_num": 2 }, "geometry": { "type": "Point", "coordinates": [-70.5167, 19.5500] } },
+                { "type": "Feature", "properties": { "name": "La Romana", "risk": "Alto", "population": 330587, "risk_level_num": 2 }, "geometry": { "type": "Point", "coordinates": [-68.9729, 18.4273] } },
+                // Risk: Medio (<300k)
+                { "type": "Feature", "properties": { "name": "Azua", "risk": "Medio", "population": 256981, "risk_level_num": 1 }, "geometry": { "type": "Point", "coordinates": [-70.7333, 18.4500] } },
+                { "type": "Feature", "properties": { "name": "Bahoruco", "risk": "Medio", "population": 118987, "risk_level_num": 1 }, "geometry": { "type": "Point", "coordinates": [-71.5333, 18.5000] } },
+                { "type": "Feature", "properties": { "name": "Barahona", "risk": "Medio", "population": 226898, "risk_level_num": 1 }, "geometry": { "type": "Point", "coordinates": [-71.1000, 18.2167] } },
+                { "type": "Feature", "properties": { "name": "Dajabón", "risk": "Medio", "population": 67887, "risk_level_num": 1 }, "geometry": { "type": "Point", "coordinates": [-71.7167, 19.5500] } },
+                { "type": "Feature", "properties": { "name": "Elías Piña", "risk": "Medio", "population": 70589, "risk_level_num": 1 }, "geometry": { "type": "Point", "coordinates": [-71.5333, 19.0000] } },
+                { "type": "Feature", "properties": { "name": "El Seibo", "risk": "Medio", "population": 115889, "risk_level_num": 1 }, "geometry": { "type": "Point", "coordinates": [-69.0500, 18.7667] } },
+                { "type": "Feature", "properties": { "name": "Hato Mayor", "risk": "Medio", "population": 89578, "risk_level_num": 1 }, "geometry": { "type": "Point", "coordinates": [-69.2500, 18.7667] } },
+                { "type": "Feature", "properties": { "name": "Hermanas Mirabal", "risk": "Medio", "population": 103974, "risk_level_num": 1 }, "geometry": { "type": "Point", "coordinates": [-70.3333, 19.4167] } },
+                { "type": "Feature", "properties": { "name": "Independencia", "risk": "Medio", "population": 54785, "risk_level_num": 1 }, "geometry": { "type": "Point", "coordinates": [-71.7500, 18.4000] } },
+                { "type": "Feature", "properties": { "name": "María Trinidad Sánchez", "risk": "Medio", "population": 140784, "risk_level_num": 1 }, "geometry": { "type": "Point", "coordinates": [-69.8500, 19.3667] } },
+                { "type": "Feature", "properties": { "name": "Monseñor Nouel", "risk": "Medio", "population": 201474, "risk_level_num": 1 }, "geometry": { "type": "Point", "coordinates": [-70.3833, 18.9167] } },
+                { "type": "Feature", "properties": { "name": "Monte Cristi", "risk": "Medio", "population": 135710, "risk_level_num": 1 }, "geometry": { "type": "Point", "coordinates": [-71.6500, 19.8500] } },
+                { "type": "Feature", "properties": { "name": "Monte Plata", "risk": "Medio", "population": 200454, "risk_level_num": 1 }, "geometry": { "type": "Point", "coordinates": [-69.7833, 18.8000] } },
+                { "type": "Feature", "properties": { "name": "Pedernales", "risk": "Medio", "population": 38941, "risk_level_num": 1 }, "geometry": { "type": "Point", "coordinates": [-71.7447, 18.0383] } },
+                { "type": "Feature", "properties": { "name": "Peravia", "risk": "Alto", "population": 298747, "risk_level_num": 2 }, "geometry": { "type": "Point", "coordinates": [-70.3333, 18.2833] } },
+                { "type": "Feature", "properties": { "name": "Samaná", "risk": "Medio", "population": 168265, "risk_level_num": 1 }, "geometry": { "type": "Point", "coordinates": [-69.3333, 19.2000] } },
+                { "type": "Feature", "properties": { "name": "Sánchez Ramírez", "risk": "Medio", "population": 157457, "risk_level_num": 1 }, "geometry": { "type": "Point", "coordinates": [-70.1333, 19.0667] } },
+                { "type": "Feature", "properties": { "name": "San José de Ocoa", "risk": "Medio", "population": 82458, "risk_level_num": 1 }, "geometry": { "type": "Point", "coordinates": [-70.5000, 18.5500] } },
+                { "type": "Feature", "properties": { "name": "San Juan", "risk": "Alto", "population": 300476, "risk_level_num": 2 }, "geometry": { "type": "Point", "coordinates": [-71.2333, 18.8167] } },
+                { "type": "Feature", "properties": { "name": "Santiago Rodríguez", "risk": "Medio", "population": 164941, "risk_level_num": 1 }, "geometry": { "type": "Point", "coordinates": [-71.3333, 19.4667] } },
+                { "type": "Feature", "properties": { "name": "Valverde", "risk": "Medio", "population": 207447, "risk_level_num": 1 }, "geometry": { "type": "Point", "coordinates": [-71.0167, 19.6167] } }
+            ]
+        };
+        const MOCK_LOW_LIGHT_DATA = {
+            "type": "FeatureCollection",
+            "features": [
+                { "type": "Feature", "properties": { "name": "Provincia de Pedernales", "description": "Una de las provincias con menor entrega de energía eléctrica, resultando en baja iluminación nocturna." }, "geometry": { "type": "Point", "coordinates": [-71.7447, 18.0383] } },
+                { "type": "Feature", "properties": { "name": "Provincia de Independencia", "description": "Zona fronteriza con bajo consumo energético y, por ende, poca luz artificial." }, "geometry": { "type": "Point", "coordinates": [-71.7500, 18.4000] } },
+                { "type": "Feature", "properties": { "name": "Provincia de Elías Piña", "description": "Baja densidad poblacional y de red eléctrica contribuyen a la oscuridad nocturna." }, "geometry": { "type": "Point", "coordinates": [-71.5333, 19.0000] } },
+                { "type": "Feature", "properties": { "name": "Provincia de Dajabón", "description": "A pesar de su actividad fronteriza, vastas áreas rurales presentan baja iluminación." }, "geometry": { "type": "Point", "coordinates": [-71.7167, 19.5500] } },
+                { "type": "Feature", "properties": { "name": "Provincia de Monte Cristi", "description": "Extensas áreas agrícolas y naturales con servicio eléctrico limitado." }, "geometry": { "type": "Point", "coordinates": [-71.6500, 19.8500] } },
+                { "type": "Feature", "properties": { "name": "Provincia de Bahoruco", "description": "Bajo nivel de energía entregada, reflejado en el mapa de luz nocturna." }, "geometry": { "type": "Point", "coordinates": [-71.5333, 18.5000] } },
+                { "type": "Feature", "properties": { "name": "Cordillera Central", "description": "Vasta área montañosa y parques nacionales sin iluminación artificial significativa." }, "geometry": { "type": "Point", "coordinates": [-70.8, 19.0] } }
+            ]
+        };
+        const MOCK_SEWER_ISSUES_DATA = {
+            "type": "FeatureCollection",
+            "features": [
+                { "type": "Feature", "properties": { "name": "Santo Domingo Norte y Oeste", "description": "Cobertura de alcantarillado muy baja y sistemas obsoletos en zonas de alta densidad." }, "geometry": { "type": "Point", "coordinates": [-70.0, 18.55] } },
+                { "type": "Feature", "properties": { "name": "Santiago (Periferia)", "description": "Expansión urbana sin infraestructura sanitaria adecuada, afectando cañadas y ríos." }, "geometry": { "type": "Point", "coordinates": [-70.73, 19.47] } },
+                { "type": "Feature", "properties": { "name": "San Cristóbal", "description": "Baja cobertura de alcantarillado sanitario, con menos del 10% de los hogares conectados." }, "geometry": { "type": "Point", "coordinates": [-70.10, 18.42] } },
+                { "type": "Feature", "properties": { "name": "Barahona", "description": "Sistemas de saneamiento deficientes, con una cobertura de alcantarillado por debajo del 5%." }, "geometry": { "type": "Point", "coordinates": [-71.1000, 18.2167] } },
+                { "type": "Feature", "properties": { "name": "San Juan de la Maguana", "description": "Cobertura de saneamiento limitada, con alto porcentaje de hogares sin conexión a la red." }, "geometry": { "type": "Point", "coordinates": [-71.2333, 18.8167] } },
+                { "type": "Feature", "properties": { "name": "Región Este (La Romana / SPM)", "description": "Aunque son polos económicos, la infraestructura de saneamiento no ha crecido al ritmo de la población." }, "geometry": { "type": "Point", "coordinates": [-69.1, 18.44] } }
+            ]
+        };
+        const MOCK_DEFORESTED_ZONES_DATA = {
+            "type": "FeatureCollection",
+            "features": [
+                { "type": "Feature", "properties": { "name": "Frontera Sur y Sierra de Bahoruco", "description": "Zona de alta presión por agricultura de subsistencia y producción de carbón, afectando directamente la biodiversidad del parque nacional." }, "geometry": { "type": "Polygon", "coordinates": [[ [-71.8, 18.5], [-71.4, 18.55], [-71.3, 18.2], [-71.7, 18.15], [-71.8, 18.5] ]] } },
+                { "type": "Feature", "properties": { "name": "Cordillera Central (Valle de San Juan)", "description": "Deforestación en las laderas para expandir la frontera agrícola, afectando las nacientes de ríos importantes." }, "geometry": { "type": "Polygon", "coordinates": [[ [-71.4, 19.0], [-71.1, 19.05], [-71.0, 18.7], [-71.3, 18.65], [-71.4, 19.0] ]] } },
+                { "type": "Feature", "properties": { "name": "Alrededores de Los Haitises", "description": "Presión por ganadería extensiva y agricultura que reduce la zona de amortiguamiento del parque nacional." }, "geometry": { "type": "Polygon", "coordinates": [[ [-70.0, 19.1], [-69.7, 19.15], [-69.6, 18.9], [-69.9, 18.85], [-70.0, 19.1] ]] } },
+                { "type": "Feature", "properties": { "name": "Cuenca Alta del Río Ozama", "description": "Deforestación para asentamientos informales y extracción de agregados, contaminando una fuente de agua vital para Santo Domingo." }, "geometry": { "type": "Polygon", "coordinates": [[ [-69.95, 18.6], [-69.85, 18.61], [-69.85, 18.52], [-69.95, 18.51], [-69.95, 18.6] ]] } },
+                { "type": "Feature", "properties": { "name": "Frontera Noroeste (Dajabón/Monte Cristi)", "description": "Impacto severo por la quema para producción de carbón y agricultura transfronteriza." }, "geometry": { "type": "Polygon", "coordinates": [[ [-71.7, 19.6], [-71.5, 19.6], [-71.5, 19.4], [-71.7, 19.4], [-71.7, 19.6] ]] } }
+            ]
+        };
+        const MOCK_PROTECTED_AREAS_DATA = {
+            "type": "FeatureCollection",
+            "features": [
+                 { "type": "Feature", "properties": { "name": "Parque Nacional del Este", "description": "Reserva de la biosfera (Cotubanamá)." }, "geometry": { "type": "Polygon", "coordinates": [[ [-68.8, 18.45], [-68.5, 18.45], [-68.5, 18.2], [-68.8, 18.2], [-68.8, 18.45] ]] } },
+                 { "type": "Feature", "properties": { "name": "Parque Nacional Jaragua", "description": "La mayor área protegida del Caribe." }, "geometry": { "type": "Polygon", "coordinates": [[ [-71.6, 17.9], [-71.2, 17.9], [-71.2, 17.5], [-71.6, 17.5], [-71.6, 17.9] ]] } },
+                 { "type": "Feature", "properties": { "name": "Parque Nacional Sierra de Bahoruco", "description": "Importante reserva de biodiversidad y bosques nublados." }, "geometry": { "type": "Polygon", "coordinates": [[ [-71.7, 18.4], [-71.3, 18.4], [-71.3, 18.1], [-71.7, 18.1], [-71.7, 18.4] ]] } },
+                 { "type": "Feature", "properties": { "name": "Parque Nacional Los Haitises", "description": "Bosque húmedo subtropical y formaciones kársticas." }, "geometry": { "type": "Polygon", "coordinates": [[ [-69.8, 19.1], [-69.4, 19.1], [-69.4, 18.9], [-69.8, 18.9], [-69.8, 19.1] ]] } },
+                 { "type": "Feature", "properties": { "name": "Parque Nacional Valle Nuevo", "description": "Conocido como 'Madre de las Aguas', altas elevaciones." }, "geometry": { "type": "Polygon", "coordinates": [[ [-70.7, 18.8], [-70.5, 18.8], [-70.5, 18.6], [-70.7, 18.6], [-70.7, 18.8] ]] } },
+                 { "type": "Feature", "properties": { "name": "Parque Nacional Armando Bermúdez", "description": "Hogar del Pico Duarte, la montaña más alta del Caribe." }, "geometry": { "type": "Polygon", "coordinates": [[ [-71.2, 19.2], [-70.9, 19.2], [-70.9, 18.9], [-71.2, 18.9], [-71.2, 19.2] ]] } }
+            ]
+        };
+        const MOCK_ELECTRICAL_FAULTS_DATA = {
+            "type": "FeatureCollection",
+            "features": [
+                { "type": "Feature", "properties": { "name": "Fallas Eléctricas - Gran Santo Domingo", "description": "Alta concentración de interrupciones y fallas en circuitos eléctricos." }, "geometry": { "type": "Point", "coordinates": [-69.95, 18.50] } },
+                { "type": "Feature", "properties": { "name": "Fallas Eléctricas - Santiago", "description": "Zona con recurrencia de fallas en la red de distribución." }, "geometry": { "type": "Point", "coordinates": [-70.70, 19.45] } },
+                { "type": "Feature", "properties": { "name": "Fallas Eléctricas - San Cristóbal", "description": "Interrupciones frecuentes reportadas en esta provincia." }, "geometry": { "type": "Point", "coordinates": [-70.10, 18.42] } },
+                { "type": "Feature", "properties": { "name": "Fallas Eléctricas - San Francisco de Macorís", "description": "Circuitos con alta tasa de fallos en la provincia Duarte." }, "geometry": { "type": "Point", "coordinates": [-70.25, 19.30] } },
+                { "type": "Feature", "properties": { "name": "Fallas Eléctricas - Eje Este (SPM/La Romana)", "description": "Fallos recurrentes en la red de la región este." }, "geometry": { "type": "Point", "coordinates": [-69.15, 18.43] } }
+            ]
+        };
+
+
+
+        // ------------------------------------------------------------------
+        // Lógica de Vistas y Navegación
+        // ------------------------------------------------------------------
+        const views = {
+            'home': document.getElementById('home-view'),
+            'indicators': document.getElementById('indicators-view'), 
+            'map': document.getElementById('map-view'),
+            'environmental': document.getElementById('environmental-view'), 
+            'info': document.getElementById('info-view')
+        };
+
+        function showView(viewId) {
+            // 1. Oculta todas las vistas
+            Object.values(views).forEach(view => {
+                if (view) view.classList.add('hidden');
+            });
+            // 2. Muestra la vista seleccionada
+            if (views[viewId]) {
+                views[viewId].classList.remove('hidden');
+            }
+
+            // 3. Actualiza el estado activo de la navegación
+            renderNavLinks();
+            
+            // 4. Reinicia contadores y animaciones si es necesario
+            if (sliderInterval) clearInterval(sliderInterval);
+            resetCounters();
+
+            // 5. Ejecuta funciones específicas de la vista
+            if (viewId === 'indicators') {
+                animateDevelopmentCounters();
+                initSlider();
+            }
+            if (viewId === 'map') {
+                setTimeout(initLeafletMap, 50); 
+            }
+            if (viewId === 'environmental') {
+                animateEnvironmentalCounters();
+            }
+            
+            // 6. Ejecuta el IntersectionObserver para animaciones de scroll
+            observeElements();
+
+            // 7. Vuelve arriba de la sección de vistas para una transición limpia
+            const viewsContainer = document.getElementById('views-container');
+            if (viewsContainer && viewId !== 'home') {
+                 viewsContainer.scrollIntoView({ behavior: 'auto' }); 
+            }
+        }
+
+        
+        // ------------------------------------------------------------------
+        // Lógica de Contadores Animados
+        // ------------------------------------------------------------------
+        function resetCounter(elementId) {
+             const element = document.getElementById(elementId);
+             if (element) {
+                 if(element.id.includes('urban') || element.id.includes('coastal') || element.id.includes('traffic') || element.id.includes('temp')) {
+                     element.textContent = '[XX.X]';
+                 } else {
+                     element.textContent = '[XXXX]';
+                 }
+             }
+        }
+        function resetCounters() {
+             resetCounter('counter-urban'); resetCounter('counter-coastal');
+             resetCounter('counter-traffic'); resetCounter('counter-urban-pop');
+             resetCounter('counter-temp-increase'); resetCounter('counter-vulnerable-housing');
+        }
+
+        function animateCounter(elementId, finalValue, duration = 1500, decimalPlaces = 1) {
+            const element = document.getElementById(elementId);
+            if (!element || !finalValue) {
+                resetCounter(elementId);
+                return;
+            };
+            
+            let startTimestamp;
+            const startValue = 0;
+
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const currentValue = startValue + progress * (finalValue - startValue);
+                
+                element.textContent = currentValue.toFixed(decimalPlaces);
+
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                } else {
+                    element.textContent = finalValue.toFixed(decimalPlaces); 
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+        
+        function animateDevelopmentCounters() {
+            if (document.getElementById('indicators-view').classList.contains('hidden')) return;
+            animateCounter('counter-urban', MOCK_DATA.urban, 2000, 1);
+            animateCounter('counter-coastal', MOCK_DATA.coastal, 1800, 1);
+            animateCounter('counter-traffic', MOCK_DATA.traffic, 1600, 1);
+        }
+        
+        function animateEnvironmentalCounters() {
+             if (document.getElementById('environmental-view').classList.contains('hidden')) return;
+            animateCounter('counter-urban-pop', MOCK_ENVIRONMENTAL_DATA.urban_pop, 2000, 1); 
+            animateCounter('counter-temp-increase', MOCK_ENVIRONMENTAL_DATA.temp_increase, 1800, 1);
+            animateCounter('counter-vulnerable-housing', MOCK_ENVIRONMENTAL_DATA.vulnerable_housing, 1600, 0); 
+        }
+        
+        // ------------------------------------------------------------------
+        // Lógica de Scroll Cinematográfico (IntersectionObserver y Parallax)
+        // ------------------------------------------------------------------
+        const scrollObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                } else {
+                    entry.target.classList.remove('visible');
+                }
+            });
+        }, { threshold: 0.2 });
+
+        function observeElements() {
+             document.querySelectorAll('.animate-on-scroll').forEach(el => scrollObserver.unobserve(el));
+            const activeView = document.querySelector('.view:not(.hidden)');
+            if (activeView) {
+                activeView.querySelectorAll('.animate-on-scroll').forEach(element => {
+                    scrollObserver.observe(element);
+                });
+            }
+        }
+
+
+        // Efecto Parallax del Hero Section
+        const heroSection = document.getElementById('hero-section');
+        const heroContent = document.getElementById('hero-content');
+
+        window.addEventListener('scroll', () => {
+            if (heroSection) {
+                const scrollPosition = window.scrollY;
+                heroContent.style.transform = `translateY(${scrollPosition * 0.2}px)`;
+                const scale = 1 + (scrollPosition * 0.00005);
+                const blur = Math.min(scrollPosition / 700, 2); 
+                heroSection.style.transform = `scale(${scale})`;
+                heroSection.style.filter = `blur(${blur}px)`;
+                const opacity = Math.min(scrollPosition / 400, 0.7);
+                document.getElementById('hero-overlay').style.backgroundColor = `rgba(0, 0, 0, ${0.4 + opacity})`;
+            }
+        });
+        
+        // ------------------------------------------------------------------
+        // Lógica del Slider de Imágenes (Carrusel)
+        // ------------------------------------------------------------------
+        const slider = document.getElementById('image-slider');
+        const slidesData = [
+            { url: 'image.png', key: 'slide1Caption', targetView: 'map' },
+            { url: 'barrio.png', key: 'slide2Caption', targetView: 'map' },
+            { url: 'calor.jpg', key: 'slide3Caption', targetView: 'environmental' }
+        ];
+        let currentSlide = 0;
+        let sliderInterval;
+
+        function renderSlides() {
+            const texts = TRANSLATIONS[currentLang];
+            
+            slider.innerHTML = slidesData.map((slide, index) => `
+                <div class="slide" data-index="${index}" style="background-image: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1) 100%), url('${slide.url}');">
+                    <div class="slide-content">
+                        <p class="text-sm text-gray-400 mb-2 uppercase tracking-widest"> ${index + 1}/${slidesData.length}</p>
+                        <h4 class="slide-title text-2xl md:text-3xl text-white font-extrabold uppercase">${texts[slide.key]}</h4>
+                        <button class="inline-flex items-center px-6 py-2 text-sm font-semibold text-white bg-transparent border border-white rounded-lg hover:bg-white hover:text-gray-900 transition mt-4" onclick="showView('${slide.targetView}')">
+                            ${texts['slideButton']} <i data-lucide="arrow-right" class="w-4 h-4 ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function updateSlider() {
+            const offset = -currentSlide * 100;
+            slider.style.transform = `translateX(${offset}%)`;
+        }
+
+        function nextSlide() {
+            currentSlide = (currentSlide + 1) % slidesData.length;
+            updateSlider();
+        }
+
+        function initSlider() {
+            if (sliderInterval) clearInterval(sliderInterval); 
+
+            renderSlides();
+            updateSlider();
+            
+            sliderInterval = setInterval(nextSlide, 5000);
+        }
+
+        // ------------------------------------------------------------------
+        // Lógica de Leaflet Map
+        // ------------------------------------------------------------------
+        
+        function makeControlDraggable(elmnt) {
+            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+            const dragHandle = elmnt.querySelector('.leaflet-control-layers-base') || elmnt.querySelector('h4') || elmnt;
+            dragHandle.style.cursor = 'move';
+            dragHandle.onmousedown = dragMouseDown;
+
+            function dragMouseDown(e) {
+                e = e || window.event;
+                e.preventDefault();
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                document.onmouseup = closeDragElement;
+                document.onmousemove = elementDrag;
+            }
+
+            function elementDrag(e) {
+                e = e || window.event;
+                e.preventDefault();
+                pos1 = pos3 - e.clientX;
+                pos2 = pos4 - e.clientY;
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+                elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+            }
+
+            function closeDragElement() {
+                document.onmouseup = null;
+                document.onmousemove = null;
+            }
+        }
+
+        function getColorByRisk(risk) {
+            switch (risk) {
+                case 'Muy Alto': return '#DC2626'; // Rojo
+                case 'Alto': return '#F59E0B'; // Ambar/Naranja
+                case 'Medio': return '#3B82F6'; // Azul
+                default: return '#10B981'; // Verde por defecto
+            }
+        }
+
+        function createGeoJsonLayer(data) {
+            if (!data || !data.features || data.features.length === 0) return L.featureGroup();
+            const texts = TRANSLATIONS[currentLang];
+            return L.geoJSON(data, {
+                pointToLayer: function (feature, latlng) {
+                    const color = getColorByRisk(feature.properties.risk);
+                    return L.circleMarker(latlng, {
+                        radius: 8, fillColor: color, color: "#fff", weight: 1.5, opacity: 1, fillOpacity: 0.8
+                    });
+                },
+                onEachFeature: function (feature, layer) {
+                    if (feature.properties && feature.properties.name) {
+                        let popupContent = `
+                            <div class='space-y-1 text-sm'>
+                                <h4 class='text-base font-bold text-spacex-highlight'>${feature.properties.name}</h4>
+                                <div class='border-t border-gray-600 pt-1 mt-1'>
+                                    <p><strong style="color: ${getColorByRisk(feature.properties.risk)};">${texts.popupRisk}:</strong> ${feature.properties.risk}</p>
+                                    <p><strong>${texts.popupPopulation}:</strong> ${feature.properties.population.toLocaleString()}</p>
+                                </div>
+                            </div>`;
+                        
+                        layer.bindPopup(popupContent, {
+                            className: 'custom-leaflet-popup'
+                        });
+                    }
+                }
+            });
+        }
+
+        // Función genérica para crear capas de puntos con un color específico
+        function createPointLayer(data, color, popupKey) {
+            if (!data || !data.features || data.features.length === 0) return L.featureGroup();
+            return L.geoJSON(data, {
+                pointToLayer: function (feature, latlng) {
+                    return L.circleMarker(latlng, {
+                        radius: 7, 
+                        fillColor: color,
+                        color: "#000", 
+                        weight: 1, 
+                        opacity: 1, 
+                        fillOpacity: 0.9
+                    });
+                },
+                onEachFeature: function (feature, layer) {
+                    if (feature.properties && feature.properties.name) {
+                       let popupContent = `
+                            <div class='space-y-1 text-sm'>
+                                <h4 class='text-base font-bold text-spacex-highlight'>${feature.properties.name}</h4>
+                                <div class='border-t border-gray-600 pt-1 mt-1'>
+                                    <p>${feature.properties[popupKey]}</p>
+                                </div>
+                            </div>`;
+                        layer.bindPopup(popupContent, { className: 'custom-leaflet-popup' });
+                    }
+                }
+            });
+        }
+        
+        // Función genérica para crear capas de polígonos
+        function createPolygonLayer(data, style, popupKey) {
+            if (!data || !data.features || data.features.length === 0) return L.featureGroup();
+             return L.geoJSON(data, {
+                style: style,
+                onEachFeature: function (feature, layer) {
+                    if (feature.properties && feature.properties.name) {
+                        let popupContent = `
+                            <div class='space-y-1 text-sm'>
+                                <h4 class='text-base font-bold text-spacex-highlight'>${feature.properties.name}</h4>
+                                <div class='border-t border-gray-600 pt-1 mt-1'>
+                                    <p>${feature.properties[popupKey]}</p>
+                                </div>
+                            </div>`;
+                        layer.bindPopup(popupContent, { className: 'custom-leaflet-popup' });
+                    }
+                }
+            });
+        }
+
+        
+        function addLegend(map) {
+            const texts = TRANSLATIONS[currentLang];
+            const legend = L.control({ position: 'bottomleft' });
+            legend.onAdd = function (map) {
+                const div = L.DomUtil.create('div', 'info legend');
+                div.innerHTML = `<h4>${texts.legendTitleRisk}</h4>`; 
+                const grades = [
+                    { label: texts.legendRiskVeryHigh, color: '#DC2626' },
+                    { label: texts.legendRiskHigh, color: '#F59E0B' },
+                    { label: texts.legendRiskMedium, color: '#3B82F6' }
+                ];
+                for (let i = 0; i < grades.length; i++) {
+                    div.innerHTML += `<div><i style="background:${grades[i].color}"></i><strong>${grades[i].label}</strong></div>`;
+                }
+                 div.innerHTML += `<h4 class="mt-2">${texts.legendTitleAnalysis}</h4>`;
+                 div.innerHTML += `<div>${ICONS_SVG['zap'].replace('class="inline-block mr-2 align-middle"', 'class="inline-block mr-2"').replace('width="16" height="16"', 'width="18" height="18"')}<strong>${texts.legendElectricalFaults}</strong></div>`;
+                 div.innerHTML += `<div>${ICONS_SVG['lightbulb-off'].replace('class="inline-block mr-2 align-middle"', 'class="inline-block mr-2"').replace('width="16" height="16"', 'width="18" height="18"')}<strong>${texts.legendLowLight}</strong></div>`;
+                 div.innerHTML += `<div><i style="background:#be123c"></i><strong>${texts.legendSewer}</strong></div>`;
+                 div.innerHTML += `<div><i style="background:#a16207"></i><strong>${texts.legendDeforested}</strong></div>`;
+                 div.innerHTML += `<div><i style="background:#1d4ed8"></i><strong>${texts.legendProtected}</strong></div>`;
+                return div;
+            };
+            legend.addTo(map);
+            return legend;
+        }
+        
+        function updateRiskAlertMessage() {
+             if (!MOCK_GEOJSON_DATA.features || MOCK_GEOJSON_DATA.features.length === 0) {
+                 document.getElementById('risk-alert').classList.add('hidden');
+                 return;
+             }
+            const highestRiskLevel = Math.max(...MOCK_GEOJSON_DATA.features.map(f => f.properties.risk_level_num || 0));
+            const criticalZones = MOCK_GEOJSON_DATA.features.filter(f => f.properties.risk_level_num === highestRiskLevel);
+            
+            const alertElement = document.getElementById('risk-alert');
+            const alertMessage = document.getElementById('alert-message');
+            const texts = TRANSLATIONS[currentLang];
+            
+            if (criticalZones.length > 0) {
+                const zoneNames = criticalZones.map(z => z.properties.name).join(' y ');
+                alertMessage.innerHTML = texts['alertMessageTemplate'].replace('$ZONES', `<strong>${zoneNames}</strong>`);
+                alertElement.classList.remove('hidden');
+            } else {
+                alertElement.classList.add('hidden');
+            }
+        }
+        
+        function initLeafletMap() {
+            const texts = TRANSLATIONS[currentLang];
+            const DR_COORDS = [18.7357, -70.1627]; 
+            const ZOOM_LEVEL = 8;
+
+            if (leafletMap) {
+                leafletMap.remove();
+            }
+
+            // --- Capas base del mapa ---
+            const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' });
+            const darkMapLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© CartoDB | OpenStreetMap' });
+            const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '© Esri' });
+            
+            // --- Filtrar y crear capas ---
+            const highRiskData = MOCK_GEOJSON_DATA.features.filter(f => f.properties.risk === 'Muy Alto');
+            const mediumRiskData = MOCK_GEOJSON_DATA.features.filter(f => f.properties.risk === 'Alto');
+            const lowRiskData = MOCK_GEOJSON_DATA.features.filter(f => f.properties.risk === 'Medio');
+
+            overlayLayers = {
+                [texts.layerRiskVeryHigh]: createGeoJsonLayer({ type: 'FeatureCollection', features: highRiskData }),
+                [texts.layerRiskHigh]: createGeoJsonLayer({ type: 'FeatureCollection', features: mediumRiskData }),
+                [texts.layerRiskMedium]: createGeoJsonLayer({ type: 'FeatureCollection', features: lowRiskData }),
+                [texts.legendElectricalFaults]: createPointLayer(MOCK_ELECTRICAL_FAULTS_DATA, '#ef4444', 'description'),
+                [texts.legendLowLight]: createPointLayer(MOCK_LOW_LIGHT_DATA, '#FFD700', 'description'),
+                [texts.legendSewer]: createPointLayer(MOCK_SEWER_ISSUES_DATA, '#be123c', 'description'),
+                [texts.legendDeforested]: createPolygonLayer(MOCK_DEFORESTED_ZONES_DATA, { color: "#a16207", weight: 2, opacity: 0.8, fillOpacity: 0.4 }, 'description'),
+                [texts.legendProtected]: createPolygonLayer(MOCK_PROTECTED_AREAS_DATA, { color: "#1d4ed8", weight: 2, opacity: 0.8, fillOpacity: 0.2 }, 'description')
+            };
+            
+            // --- Inicializar el mapa ---
+            leafletMap = L.map('leaflet-map-container', {
+                attributionControl: true,
+                layers: [darkMapLayer, overlayLayers[texts.layerRiskVeryHigh], overlayLayers[texts.layerRiskHigh], overlayLayers[texts.legendElectricalFaults]]
+            }).setView(DR_COORDS, ZOOM_LEVEL);
+            
+            const baseMaps = {
+                [texts.baseMapDark]: darkMapLayer,
+                [texts.baseMapStreet]: osmLayer,
+                [texts.baseMapSatellite]: satelliteLayer
+            };
+            
+            // --- Definir las capas de superposición (los "checkboxes") ---
+            const overlayMaps = {
+                [ICONS_SVG['alert-octagon'] + `<span style='font-weight: bold;'>${texts.layerRiskVeryHigh}</span>`]: overlayLayers[texts.layerRiskVeryHigh],
+                [ICONS_SVG['alert-triangle'] + `<span style='font-weight: bold;'>${texts.layerRiskHigh}</span>`]: overlayLayers[texts.layerRiskHigh],
+                [ICONS_SVG['shield-alert'] + `<span style='font-weight: bold;'>${texts.layerRiskMedium}</span>`]: overlayLayers[texts.layerRiskMedium],
+                "<hr>": L.featureGroup(), // Separador visual
+                [ICONS_SVG['zap'] + `<span style='font-weight: bold;'>${texts.legendElectricalFaults}</span>`]: overlayLayers[texts.legendElectricalFaults],
+                [ICONS_SVG['lightbulb-off'] + `<span style='font-weight: bold;'>${texts.legendLowLight}</span>`]: overlayLayers[texts.legendLowLight],
+                [ICONS_SVG['waves'] + `<span style='font-weight: bold;'>${texts.legendSewer}</span>`]: overlayLayers[texts.legendSewer],
+                [ICONS_SVG['axe'] + `<span style='font-weight: bold;'>${texts.legendDeforested}</span>`]: overlayLayers[texts.legendDeforested],
+                [ICONS_SVG['shield-check'] + `<span style='font-weight: bold;'>${texts.legendProtected}</span>`]: overlayLayers[texts.legendProtected]
+            };
+
+            // --- Añadir el control de capas (checkboxes) al mapa ---
+            const layersControl = L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(leafletMap);
+            
+            // --- Añadir otros controles y actualizar estado ---
+            leafletMap.invalidateSize();
+            const legend = addLegend(leafletMap);
+            updateRiskAlertMessage(); 
+
+            // --- Hacer controles arrastrables ---
+            if (layersControl.getContainer()) {
+                makeControlDraggable(layersControl.getContainer());
+            }
+            if (legend.getContainer()) {
+                makeControlDraggable(legend.getContainer());
+            }
+            
+            if (MOCK_GEOJSON_DATA.features && MOCK_GEOJSON_DATA.features.length > 0) {
+                 const criticalZone = MOCK_GEOJSON_DATA.features.find(f => f.properties.risk_level_num === 3) || MOCK_GEOJSON_DATA.features[0];
+                 if(criticalZone) {
+                     const coords = [criticalZone.geometry.coordinates[1], criticalZone.geometry.coordinates[0]];
+                     leafletMap.setView(coords, 9, { animate: true });
+                 }
+            }
+        }
+        
+        // ------------------------------------------------------------------
+        // Lógica de Gemini API y Chatbot
+        // ------------------------------------------------------------------
+        const chatbotWindow = document.getElementById('chatbot-window');
+        const toggleButton = document.getElementById('chatbot-toggle-button');
+        const closeChatButton = document.getElementById('close-chat-button');
+        const chatInputForm = document.getElementById('chat-input-form');
+        const chatInput = document.getElementById('chat-input');
+        const chatMessagesContainer = document.getElementById('chat-messages');
+        const generateRecsButton = document.getElementById('generate-recommendations-button');
+        const recsLoader = document.getElementById('recommendations-loader');
+        const recsContainer = document.getElementById('recommendations-container');
+        const recsResponseEl = document.getElementById('recommendations-response');
+
+        let chatHistory = [];
+
+        function addMessageToChat(text, sender) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('chat-message', sender === 'user' ? 'user-message' : 'bot-message');
+            messageElement.textContent = text;
+            chatMessagesContainer.appendChild(messageElement);
+            chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+        }
+
+        // Generic function to call the API
+        async function callSingleShotGemini(payload, retries = 3, delay = 1000) {
+            // The API key is an empty string. Canvas will provide it in runtime.
+            const apiKey = "AIzaSyCADcb0Eq-3yCr19Rhl_H0-sQ5a8LqUegI"; 
+            
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const result = await response.json();
+                const candidate = result.candidates?.[0];
+                if (candidate && candidate.content?.parts?.[0]?.text) {
+                    return candidate.content.parts[0].text;
+                } else {
+                    console.error("Unexpected API response:", result);
+                    if(result.error) return `API Error: ${result.error.message}`;
+                    return "Could not get a valid response from the assistant.";
+                }
+            } catch (error) {
+                console.error('Error calling Gemini API:', error);
+                if (retries > 0) {
+                    await new Promise(res => setTimeout(res, delay));
+                    return callSingleShotGemini(payload, retries - 1, delay * 2);
+                } else {
+                    const errorMessages = {
+                        'es': "Error al conectar con el asistente. Verifica tu clave API y conexión a internet.",
+                        'en': "Error connecting to the assistant. Check your API key and internet connection."
+                    };
+                    return errorMessages[currentLang];
+                }
+            }
+        }
+        
+        // Chatbot-specific function
+        async function callGeminiForChat() {
+            const dataContext = `
+- **Key Indicators:** Urban Population: ${MOCK_DATA.urban}%. Population in Coastal Risk Zones (<3km from sea): ${MOCK_DATA.coastal}%. Traffic Congestion: ${MOCK_DATA.traffic}%.
+- **Environmental Impact Data:** Urban Population (2018): ${MOCK_ENVIRONMENTAL_DATA.urban_pop}%. Urban Temperature Increase: +${MOCK_ENVIRONMENTAL_DATA.temp_increase}°C. Vulnerable Housing: ${MOCK_ENVIRONMENTAL_DATA.vulnerable_housing}%.
+- **Main Risk Zones:** ${MOCK_GEOJSON_DATA.features.filter(f => f.properties.risk_level_num > 1).map(f => `${f.properties.name} (Risk: ${f.properties.risk})`).join(', ')}.
+            `;
+            const systemPrompt = `**Role and Objective:** You are the UrbanXplorer AI assistant. Your main goal is to help urban planners analyze data about the Dominican Republic and suggest solutions.
+
+**Context Data (Simulated):**
+${dataContext}
+
+**Response Instructions:**
+1. **Language:** Respond in the same language as the user (Spanish or English).
+2. Base your answers strictly on the context data provided above and the conversation history.
+3. When using a specific data point, mention it. Example: "According to the data, the urban population is 83.2%...".
+4. Be professional, concise, and friendly.
+5. Offer practical and actionable advice for urban planners.
+6. Respond only in plain text, without special formatting.`;
+            
+            const payload = {
+                contents: chatHistory,
+                systemInstruction: { parts: [{ text: systemPrompt }] }
+            };
+
+            const botResponse = await callSingleShotGemini(payload);
+            if (botResponse && !botResponse.startsWith("Error")) {
+                chatHistory.push({ role: "model", parts: [{ text: botResponse }] });
+            }
+            return botResponse;
+        }
+
+        // Map Recommendations specific function
+        async function handleGenerateRecommendations() {
+            recsLoader.classList.remove('hidden');
+            recsContainer.classList.add('hidden');
+            generateRecsButton.disabled = true;
+            generateRecsButton.classList.add('opacity-50', 'cursor-not-allowed');
+
+            const activeLayerNames = Object.keys(overlayLayers).filter(layerName => 
+                leafletMap && leafletMap.hasLayer(overlayLayers[layerName])
+            );
+            
+            if (activeLayerNames.length === 0) {
+                recsResponseEl.textContent = TRANSLATIONS[currentLang]['mapRecommendationsNoLayers'];
+                recsLoader.classList.add('hidden');
+                recsContainer.classList.remove('hidden');
+                generateRecsButton.disabled = false;
+                generateRecsButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                return;
+            }
+
+            const userQuery = currentLang === 'es' 
+                ? `Como urbanista experto, genera un plan de acción y recomendaciones basadas en las siguientes capas de datos activas en el mapa de la República Dominicana: ${activeLayerNames.join(', ')}. Estructura tu respuesta con encabezados claros para cada recomendación y utiliza viñetas para los puntos de acción. Sé específico y práctico.`
+                : `As an expert urban planner, generate an action plan and recommendations based on the following active data layers on the map of the Dominican Republic: ${activeLayerNames.join(', ')}. Structure your response with clear headings for each recommendation and use bullet points for action items. Be specific and practical.`;
+            
+            const systemPrompt = currentLang === 'es'
+                ? `Eres un asistente experto en urbanismo y análisis de datos geoespaciales para la República Dominicana. Tu propósito es generar planes de acción detallados para urbanistas basados en datos geoespaciales.`
+                : `You are an expert assistant in urban planning and geospatial data analysis for the Dominican Republic. Your purpose is to generate detailed action plans for urban planners based on geospatial data.`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+            };
+            
+            const responseText = await callSingleShotGemini(payload);
+
+            recsResponseEl.textContent = responseText;
+            recsLoader.classList.add('hidden');
+            recsContainer.classList.remove('hidden');
+            generateRecsButton.disabled = false;
+            generateRecsButton.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+        
+        // Event Listeners
+        toggleButton.addEventListener('click', () => {
+            chatbotWindow.classList.toggle('hidden');
+            if (!chatbotWindow.classList.contains('hidden') && chatMessagesContainer.children.length === 0) {
+                const welcomeKey = TRANSLATIONS[currentLang]['chatWelcome'];
+                addMessageToChat(welcomeKey, 'bot');
+            }
+        });
+
+        closeChatButton.addEventListener('click', () => chatbotWindow.classList.add('hidden'));
+
+        chatInputForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const userText = chatInput.value.trim();
+            if (!userText) return;
+
+            addMessageToChat(userText, 'user');
+            chatHistory.push({ role: "user", parts: [{ text: userText }] });
+            chatInput.value = '';
+            chatInput.disabled = true;
+
+            const typingIndicator = document.createElement('div');
+            typingIndicator.className = 'bot-message typing-indicator';
+            typingIndicator.innerHTML = '<span></span><span></span><span></span>';
+            chatMessagesContainer.appendChild(typingIndicator);
+            chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+
+            const botResponseText = await callGeminiForChat();
+
+            typingIndicator.remove();
+            addMessageToChat(botResponseText, 'bot');
+            chatInput.disabled = false;
+            chatInput.focus();
+        });
+
+        if (generateRecsButton) {
+            generateRecsButton.addEventListener('click', handleGenerateRecommendations);
+        }
+
+        // Draggable Chat Window
+        function makeChatDraggable(chatWindow, header) {
+            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+            header.onmousedown = dragMouseDown;
+
+            function dragMouseDown(e) {
+                if (window.innerWidth <= 768) return; // Disable dragging on mobile
+                e.preventDefault();
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                document.onmouseup = closeDragElement;
+                document.onmousemove = elementDrag;
+            }
+
+            function elementDrag(e) {
+                e.preventDefault();
+                pos1 = pos3 - e.clientX;
+                pos2 = pos4 - e.clientY;
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                
+                let newTop = chatWindow.offsetTop - pos2;
+                let newLeft = chatWindow.offsetLeft - pos1;
+
+                const rect = chatWindow.getBoundingClientRect();
+                const parentRect = document.body.getBoundingClientRect();
+
+                if (newTop < 0) newTop = 0;
+                if (newLeft < 0) newLeft = 0;
+                if (newTop + rect.height > parentRect.height) newTop = parentRect.height - rect.height;
+                if (newLeft + rect.width > parentRect.width) newLeft = parentRect.width - rect.width;
+
+                chatWindow.style.top = newTop + "px";
+                chatWindow.style.left = newLeft + "px";
+
+                chatWindow.style.position = 'absolute';
+                chatWindow.style.bottom = 'auto';
+                chatWindow.style.right = 'auto';
+            }
+
+            function closeDragElement() {
+                document.onmouseup = null;
+                document.onmousemove = null;
+            }
+        }
+        makeChatDraggable(chatbotWindow, document.getElementById('chat-header'));
+        
+        document.querySelector('nav').addEventListener('click', handleDelegatedNavClick);
+        mobileMenu.addEventListener('click', handleDelegatedNavClick);
+        
+        // Inicializa la vista por defecto, el idioma y el tema
+        window.onload = () => {
+            setLanguage('es'); 
+            setTheme('dark');
+            showView('home'); 
+            resetCounters();
+        };
+    </script>
+</body>
+</html>
+
+
+
+
+
