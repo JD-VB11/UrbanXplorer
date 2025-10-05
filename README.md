@@ -15,8 +15,14 @@
 <img width="1600" height="793" alt="image" src="https://github.com/user-attachments/assets/8fb15299-90a1-43cb-84e1-44979b173d1d" />
 
 <p> 
-  The first view at page is the 
+  The first view at page is the HOME, the user will be able to acess to data with the "show data button" and after will show the image carousel with three options: 
+  Monitored urban expansion, NIGHTIME SATELLITE ANALYSIS, HEAT IMPACT IN CITIES.
 </p>
+<img width="1178" height="473" alt="image" src="https://github.com/user-attachments/assets/991b4f57-3c22-44c2-9a87-7ac472277cea" />
+
+<h4>when the people click on:  NIGHTIME SATELLITE ANALYSIS </h4>
+<img width="1318" height="611" alt="image" src="https://github.com/user-attachments/assets/c19ca056-57c1-45f6-a9ae-a3cbcd703555" />
+This section will show the interactive map where the page users will acquire real data representations based in NASA Geoespacial data related overcrowder topics, electrical faults, sewerage problems, low light, desforestation and protected areas. In this space is the main tool for urban planners, students, teachers, scientists and citizens, all type of people!
 
 <h3>BENEFITS</h3>
 <p>Using UrbanXplorer offers significant advantages for urban planners, engineers, and policymakers by turning complex geospatial data into clear, actionable insights. Through its interactive map, indicators, and built-in chatbot, UrbanXplorer makes scientific data accessible and easy to interpret, even for non-technical users. Moreover, by revealing high-risk or underdeveloped zones, it supports urban resilience and disaster preparedness. Overall, UrbanXplorer empowers decision-makers to plan smarter, greener, and more balanced cities while fostering transparency and sustainable growth.
