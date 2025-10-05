@@ -30,7 +30,9 @@ This section will show the interactive map where the page users will acquire rea
 
 There isn't all! incluse if you need more help, UrbanXplorer can help you by mean a chat with our AI assistant.
 <img width="434" height="572" alt="image" src="https://github.com/user-attachments/assets/0812d3a5-4bdf-4ced-9b29-4a57e14dd4e3" />
+<br>
 if there isn't enough you can try the recomendation based in the data from page for get a detailed plan:
+<br>
 <img width="1157" height="228" alt="image" src="https://github.com/user-attachments/assets/3e0beb97-c901-464a-a988-f37211b9c3e2" />
 
 
