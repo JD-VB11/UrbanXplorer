@@ -1,3 +1,5 @@
+<img width="1024" height="1024" alt="image" src="https://github.com/user-attachments/assets/d8aec870-fe49-46ae-bd53-ed73f18dab65" />
+
 <h1 align="center">UrbanXplorer</h1>
 
 <p>How can an urban planner leverage NASA data to solve problems in the urban structure of the Dominican Republic?</p>
