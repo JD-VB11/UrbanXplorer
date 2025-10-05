@@ -4,15 +4,6 @@
 
 <p>How can an urban planner leverage NASA data to solve problems in the urban structure of the Dominican Republic?</p>
 
-<div align="center">
-  <img src="[URL_DEL_BADGE_PYTHON](https://shields.io/badge/JavaScript-F7DF1E?logo=JavaScript&logoColor=000&style=flat-square)" alt="JavaScript"> 
-  <img src="URL_DEL_BADGE_OPENCV" alt="left">
-  <img src="URL_DEL_BADGE_ULTRALYTICS" alt="Ultralytics Badge">
-  <br>
-  <img src="URL_DEL_BADGE_LICENSE" alt="License MIT">
-</div>
-![Leaflet](https://img.shields.io/badge/Leaflet-486016.svg?style=flat&logo=leaflet&logoColor=white)
-
 <hr>
 <h2>SUMMARY</h2>
 <p>We introduce UrbanXplorer, a project which goal is to provide urban planners, engineers, and local authorities with an accessible tool, based on scientific data, that supports sustainable planning and urban resilience in the Dominican Republic. In pursuit of achiving this we have developed an interactive map that integrates geospatial information from NASA sources and other open databases. Our map gives insights of critical aspects of the urban environment, such as: high-population-density zones, to plan for more balanced growth, areas needing new power plants or basic services, optimizing resource distribution, sectors with sewage system issues or environmental risk, facilitating decision-making for infrastructure projects using NASA data.
