@@ -2,7 +2,7 @@
 
 <h1 align="center">UrbanXplorer</h1>
 
-<p>How can an urban planner leverage NASA data to solve problems in the urban structure of the Dominican Republic?</p>
+<p>How can an urban planner leverage NASA data to solve problems of urban disorder?</p>
 
 <hr>
 <h2>SUMMARY</h2>
@@ -16,7 +16,7 @@
 <H3>HOW DOES IT WORK</H3>
 <p>The website features an interactive map that integrates information from NASA’s open datasets and local sources, allowing users to explore critical aspects of the urban environment. It highlights overpopulated areas, zones with low light intensity that indicate the need for new power plants, deforested regions, and protected natural areas, providing valuable insights for urban planners and policymakers.
 </p>
-<img width="1600" height="793" alt="image" src="https://github.com/user-attachments/assets/8fb15299-90a1-43cb-84e1-44979b173d1d" />
+<img width="1600" height="793" alt="image" src="https://github.com/user-attachments/assets/8fb15299-90a1-43cb-84e1-44979b173d1d"/>
 
 <p> 
   The first view at page is the HOME, the user will be able to acess to data with the "show data button" and after will show the image carousel with three options: 
