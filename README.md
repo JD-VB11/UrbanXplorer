@@ -41,7 +41,9 @@ if there isn't enough you can try the recomendation based in the data from label
 This section offers a concise overview of Key Performance Indicators (KPIs) related to the interconnected challenges of population trends and temperature increases, along with brief, general insights into their significance.
 <img width="1856" height="894" alt="imagen" src="https://github.com/user-attachments/assets/a5cef945-4077-4b4b-be65-dd0541cdf392" />
 
-<h4>when the people click on:  NIGHTIME SATELLITE ANALYSIS </h4>
+<h4>when the people click on:  MONITORED URBAN EXPANSION </h4>
+This section with more KPI's  related trafic congestion and coastal risk.
+<img width="1635" height="920" alt="imagen" src="https://github.com/user-attachments/assets/d157e107-66af-4526-a94c-ed86f5223011" />
 
 
 <h1>NASA APPS CHALLENGUE LINK: </h1> https://www.spaceappschallenge.org/2025/find-a-team/spacemakers1/?tab=project
