@@ -37,4 +37,11 @@ if there isn't enough you can try the recomendation based in the data from label
 
 <img width="1224" height="645" alt="imagen" src="https://github.com/user-attachments/assets/f95c120f-f365-499b-bd4a-0b18937f8b21" />
 
+<h4>when the people click on:  CLIMATE IMPACT </h4>
+This section offers a concise overview of Key Performance Indicators (KPIs) related to the interconnected challenges of population trends and temperature increases, along with brief, general insights into their significance.
+<img width="1856" height="894" alt="imagen" src="https://github.com/user-attachments/assets/a5cef945-4077-4b4b-be65-dd0541cdf392" />
+
+<h4>when the people click on:  NIGHTIME SATELLITE ANALYSIS </h4>
+
+
 <h1>NASA APPS CHALLENGUE LINK: </h1> https://www.spaceappschallenge.org/2025/find-a-team/spacemakers1/?tab=project
